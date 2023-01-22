@@ -1,6 +1,6 @@
 # Fuser Custom Song Creator
 
-[![.github/workflows/build.yml](https://github.com/Kapilarny/FuserCustomSongCreator/actions/workflows/build.yml/badge.svg)](https://github.com/Kapilarny/FuserCustomSongCreator/actions/workflows/build.yml)
+[![.github/workflows/build.yml](https://github.com/NarrikSynthfox/FuserCustomSongCreator/actions/workflows/build.yml/badge.svg)](https://github.com/NarrikSynthfox/FuserCustomSongCreator/actions/workflows/build.yml)
 
 ## Introduction
 
