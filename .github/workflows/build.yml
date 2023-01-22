@@ -1,39 +1,69 @@
+name: build_release
+# Workflow file for windows
 on:
   push:
-    tags:
-      - "*"
+    branches:
+      - master
+  pull_request: {}
 
-# This workflow will build a CMake based project using CMake on Windows platform and publish it to Github when a release is created
-# This workflow will build on x86 platform
 jobs:
-  build:
+  Windows:
+    name: build-windows
     runs-on: windows-latest
+
     steps:
-      - uses: actions/checkout@v2
-      - uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: amd64_x86
-      - name: Configure CMake  
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
-      - name: Build
-        run: cmake --build build --config Release
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-      - name: Upload Release Asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build/Release/Fuser_CustomSongCreator.exe
-          asset_name: Fuser_CustomSongCreator.exe
-          asset_content_type: application/octet-stream
+    - name: Checkout
+      uses: actions/checkout@v1
+      with:
+          submodules: recursive
+
+    #Use setup-cpp to setup C++ environment (CMake and GCC, adds both to PATH)
+    - name: Setup Cpp (C++ / C)
+      uses: aminya/setup-cpp@v0.26.2
+      with:
+        compiler: ${{ matrix.compiler }}
+        vcvarsall: ${{ contains(matrix.os, 'windows' )}}
+        gcc: true
+        cmake: true
+        
+    # Add MSBuild to PATH since setup-cpp doesn't do that for dome reason
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v1.1
+
+    # Configure CMake
+    - name: Running cmake (windows)
+      run: |
+        cd ${{ github.workspace }}
+        mkdir build
+        cd build
+        cmake ../ -DCMAKE_GENERATOR_PLATFORM=Win32
+
+    # Build sln file
+    - name: Build Solution (windows)
+      run: |
+        cd build
+        MSBuild.exe Fuser_CustomSongCreator.sln
+
+    # Upload Artifact
+    - name: Upload production-ready build files
+      uses: actions/upload-artifact@v3
+      with:
+        name: Nightly-Debug-Build
+        path: ./build/Debug
+
+    # Make new release with the artifact
+    - name: version
+      run: echo "::set-output name=version::$(./bin/azblogfilter --version)"
+      id: version
+
+    - name: release
+      uses: actions/create-release@v1
+      id: create_release
+      with:
+        draft: false
+        prerelease: false
+        release_name: Nightly
+        tag_name: ${{ github.ref }}
+        body_path: CHANGELOG.md
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
