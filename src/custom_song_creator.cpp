@@ -1115,7 +1115,6 @@ void custom_song_creator_update(size_t width, size_t height) {
 	
 	if (gCtx.currentPak != nullptr) {
 		if (ImGui::BeginTabBar("Tabs")) {
-
 			if (ImGui::BeginTabItem("Main Properties")) {
 				display_main_properties();
 
