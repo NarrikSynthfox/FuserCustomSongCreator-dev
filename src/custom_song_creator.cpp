@@ -79,7 +79,7 @@ void pauseMusic() {
 	
 }
 
-void display_playable_audio(PlayableAudio &audio) {
+void display_playable_audio(PlayableAudio &audio,bool isRiser) {
 	if (audio.oggData.empty()) {
 		ImGui::Text("No ogg file loaded.");
 		return;
@@ -87,7 +87,11 @@ void display_playable_audio(PlayableAudio &audio) {
 
 	auto active = BASS_ChannelIsActive(audio.channelHandle);
 	if (active != BASS_ACTIVE_PLAYING) {
-		if (ImGui::Button("Play")) {
+		std::string buttonText = "Play Disc Audio";
+		if (isRiser) {
+			buttonText = "Play Riser Audio";
+		}
+		if (ImGui::Button(buttonText.c_str())) {
 			if (audio.audioHandle != 0) {
 				BASS_SampleFree(audio.audioHandle);
 			}
@@ -475,7 +479,7 @@ void display_mogg_settings(FusionFileAsset &fusionFile, size_t idx, HmxAudio::Pa
 
 	
 
-	display_playable_audio(fusionFile.playableMoggs[idx]);
+	display_playable_audio(fusionFile.playableMoggs[idx],isRiser);
 
 	ImGui::InputScalar("Sample Rate", ImGuiDataType_U32, &header.sample_rate);
 
@@ -585,17 +589,13 @@ void display_cell_data(CelData &celData, FuserEnums::KeyMode::Value currentKeyMo
 	if (ImGui::CollapsingHeader("Riser Audio")) {
 		display_mogg_settings(fusionFileRiser, 0, *moggFilesRiser[0], true);
 
-		if (celData.type.value == CelType::Type::Beat) {
-			ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-			ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-		}
+		ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+		ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
 		duplicate_changedRiser = ImGui::Checkbox(duplicateStringRiser.c_str(), &duplicate_moggsRiser);
-		if (celData.type.value == CelType::Type::Beat) {
-			ImGui::PopItemFlag();
-			ImGui::PopStyleVar();
-			ImGui::SameLine();
-			HelpMarker("Currently, Beat tracks must duplicate their audio.");
-		}
+		ImGui::PopItemFlag();
+		ImGui::PopStyleVar();
+		ImGui::SameLine();
+		HelpMarker("Currently, Risers must duplicate their audio.");
 	}
 	if (duplicate_changed) {
 		if (duplicate_moggs) {
@@ -758,73 +758,72 @@ void display_cell_data(CelData &celData, FuserEnums::KeyMode::Value currentKeyMo
 
 		bool overwrite_midi = false;
 		bool maj = true;
-
-		if (ImGui::Button("Overwrite Disc Major Midi File")) {
-			overwrite_midi = true;
-		}
-		else if (ImGui::Button("Overwrite Disc Minor Midi File")) {
-			overwrite_midi = true;
-			maj = false;
-		}
-
-		if (overwrite_midi) {
-			auto file = OpenFile("Harmonix Midi Resource File (.mid_pc)\0*.mid_pc\0");
-			if (file) {
-				AssetLink<MidiSongAsset> *midiSong = nullptr;
-				if (maj) {
-					midiSong = &celData.majorAssets[0];
-				}
-				else {
-					midiSong = &celData.minorAssets[0];
-				}
-
-				auto &&midi_file = midiSong->data.midiFile.data;
-				auto &&midiAsset = std::get<HmxAssetFile>(midi_file.file.e->getData().data.catagoryValues[0].value);
-				
-				std::ifstream infile(*file, std::ios_base::binary);
-				std::vector<u8> fileData = std::vector<u8>(std::istreambuf_iterator<char>(infile), std::istreambuf_iterator<char>());
-				midiAsset.audio.audioFiles[0].fileData = std::move(fileData);
+		if (celData.type.value != CelType::Type::Beat) {
+			if (ImGui::Button("Overwrite Disc Major Midi File")) {
+				overwrite_midi = true;
 			}
-		}
-
-		ImGui::Spacing();
-
-
-		bool export_midi = false;
-
-		if (ImGui::Button("Export Disc Major Midi File")) {
-			export_midi = true;
-			maj = true;
-		}
-		else if (ImGui::Button("Export Disc Minor Midi File")) {
-			export_midi = true;
-			maj = false;
-		}
-
-		if (export_midi) {
-			auto file = SaveFile("Harmonix Midi Resource File (.mid_pc)\0*.mid_pc\0", "mid_pc", "");
-			if (file) {
-				AssetLink<MidiSongAsset> *midiSong = nullptr;
-				if (maj) {
-					midiSong = &celData.majorAssets[0];
-				}
-				else {
-					midiSong = &celData.minorAssets[0];
-				}
-
-				auto &&midi_file = midiSong->data.midiFile.data;
-				auto &&midiAsset = std::get<HmxAssetFile>(midi_file.file.e->getData().data.catagoryValues[0].value);
-				auto &&fileData = midiAsset.audio.audioFiles[0].fileData;
-
-				std::ofstream outfile(*file, std::ios_base::binary);
-				outfile.write((const char *)fileData.data(), fileData.size());
+			else if (ImGui::Button("Overwrite Disc Minor Midi File")) {
+				overwrite_midi = true;
+				maj = false;
 			}
+
+			if (overwrite_midi) {
+				auto file = OpenFile("Harmonix Midi Resource File (.mid_pc)\0*.mid_pc\0");
+				if (file) {
+					AssetLink<MidiSongAsset>* midiSong = nullptr;
+					if (maj) {
+						midiSong = &celData.majorAssets[0];
+					}
+					else {
+						midiSong = &celData.minorAssets[0];
+					}
+
+					auto&& midi_file = midiSong->data.midiFile.data;
+					auto&& midiAsset = std::get<HmxAssetFile>(midi_file.file.e->getData().data.catagoryValues[0].value);
+
+					std::ifstream infile(*file, std::ios_base::binary);
+					std::vector<u8> fileData = std::vector<u8>(std::istreambuf_iterator<char>(infile), std::istreambuf_iterator<char>());
+					midiAsset.audio.audioFiles[0].fileData = std::move(fileData);
+				}
+			}
+
+			ImGui::Spacing();
+
+			bool export_midi = false;
+
+			if (ImGui::Button("Export Disc Major Midi File")) {
+				export_midi = true;
+				maj = true;
+			}
+			else if (ImGui::Button("Export Disc Minor Midi File") && celData.type.value != CelType::Type::Beat) {
+				export_midi = true;
+				maj = false;
+			}
+
+			if (export_midi) {
+				auto file = SaveFile("Harmonix Midi Resource File (.mid_pc)\0*.mid_pc\0", "mid_pc", "");
+				if (file) {
+					AssetLink<MidiSongAsset>* midiSong = nullptr;
+					if (maj) {
+						midiSong = &celData.majorAssets[0];
+					}
+					else {
+						midiSong = &celData.minorAssets[0];
+					}
+
+					auto&& midi_file = midiSong->data.midiFile.data;
+					auto&& midiAsset = std::get<HmxAssetFile>(midi_file.file.e->getData().data.catagoryValues[0].value);
+					auto&& fileData = midiAsset.audio.audioFiles[0].fileData;
+
+					std::ofstream outfile(*file, std::ios_base::binary);
+					outfile.write((const char*)fileData.data(), fileData.size());
+				}
+			}
+		
+			ImGui::Spacing();
+			ImGui::Spacing();
+			ImGui::Spacing();
 		}
-
-		ImGui::Spacing();
-		ImGui::Spacing();
-		ImGui::Spacing();
-
 		if (ImGui::Button("Export Riser Fusion File")) {
 			auto file = SaveFile("Fusion Text File (.fusion)\0*.fusion\0", "fusion", "");
 			if (file) {
@@ -861,66 +860,67 @@ void display_cell_data(CelData &celData, FuserEnums::KeyMode::Value currentKeyMo
 
 		bool overwrite_midiRiser = false;
 		bool majRiser = true;
-
-		if (ImGui::Button("Overwrite Riser Major Midi File")) {
-			overwrite_midiRiser = true;
-		}
-		else if (ImGui::Button("Overwrite Riser Minor Midi File")) {
-			overwrite_midiRiser = true;
-			majRiser = false;
-		}
-
-		if (overwrite_midiRiser) {
-			auto file = OpenFile("Harmonix Midi Resource File (.mid_pc)\0*.mid_pc\0");
-			if (file) {
-				AssetLink<MidiSongAsset>* midiSongRiser = nullptr;
-				if (maj) {
-					midiSongRiser = &celData.songTransitionFile.data.majorAssets[0];
-				}
-				else {
-					midiSongRiser = &celData.songTransitionFile.data.minorAssets[0];
-				}
-
-				auto&& midi_fileRiser = midiSongRiser->data.midiFile.data;
-				auto&& midiAssetRiser = std::get<HmxAssetFile>(midi_fileRiser.file.e->getData().data.catagoryValues[0].value);
-
-				std::ifstream infile(*file, std::ios_base::binary);
-				std::vector<u8> fileData = std::vector<u8>(std::istreambuf_iterator<char>(infile), std::istreambuf_iterator<char>());
-				midiAssetRiser.audio.audioFiles[0].fileData = std::move(fileData);
+		if (celData.type.value != CelType::Type::Beat) {
+			if (ImGui::Button("Overwrite Riser Major Midi File")) {
+				overwrite_midiRiser = true;
 			}
-		}
+			//else if (ImGui::Button("Overwrite Riser Minor Midi File")) {
+			//	overwrite_midiRiser = true;
+			//	majRiser = false;
+			//}
 
-		ImGui::Spacing();
+			if (overwrite_midiRiser) {
+				auto file = OpenFile("Harmonix Midi Resource File (.mid_pc)\0*.mid_pc\0");
+				if (file) {
+					AssetLink<MidiSongAsset>* midiSongRiser = nullptr;
+					if (majRiser) {
+						midiSongRiser = &celData.songTransitionFile.data.majorAssets[0];
+					}
+					else {
+						midiSongRiser = &celData.songTransitionFile.data.minorAssets[0];
+					}
 
+					auto&& midi_fileRiser = midiSongRiser->data.midiFile.data;
+					auto&& midiAssetRiser = std::get<HmxAssetFile>(midi_fileRiser.file.e->getData().data.catagoryValues[0].value);
 
-		bool export_midiRiser = false;
-
-		if (ImGui::Button("Export Riser Major Midi File")) {
-			export_midiRiser = true;
-			majRiser = true;
-		}
-		else if (ImGui::Button("Export Riser Minor Midi File")) {
-			export_midiRiser = true;
-			majRiser = false;
-		}
-
-		if (export_midiRiser) {
-			auto file = SaveFile("Harmonix Midi Resource File (.mid_pc)\0*.mid_pc\0", "mid_pc", "");
-			if (file) {
-				AssetLink<MidiSongAsset>* midiSongRiser = nullptr;
-				if (maj) {
-					midiSongRiser = &celData.songTransitionFile.data.majorAssets[0];
+					std::ifstream infile(*file, std::ios_base::binary);
+					std::vector<u8> fileData = std::vector<u8>(std::istreambuf_iterator<char>(infile), std::istreambuf_iterator<char>());
+					midiAssetRiser.audio.audioFiles[0].fileData = std::move(fileData);
 				}
-				else {
-					midiSongRiser = &celData.songTransitionFile.data.minorAssets[0];
+			}
+
+			ImGui::Spacing();
+
+
+			bool export_midiRiser = false;
+
+			if (ImGui::Button("Export Riser Major Midi File")) {
+				export_midiRiser = true;
+				majRiser = true;
+			}
+			//else if (ImGui::Button("Export Riser Minor Midi File")) {
+			//	export_midiRiser = true;
+			//	majRiser = false;
+			//}
+
+			if (export_midiRiser) {
+				auto file = SaveFile("Harmonix Midi Resource File (.mid_pc)\0*.mid_pc\0", "mid_pc", "");
+				if (file) {
+					AssetLink<MidiSongAsset>* midiSongRiser = nullptr;
+					if (majRiser) {
+						midiSongRiser = &celData.songTransitionFile.data.majorAssets[0];
+					}
+					else {
+						midiSongRiser = &celData.songTransitionFile.data.minorAssets[0];
+					}
+
+					auto&& midi_fileRiser = midiSongRiser->data.midiFile.data;
+					auto&& midiAssetRiser = std::get<HmxAssetFile>(midi_fileRiser.file.e->getData().data.catagoryValues[0].value);
+					auto&& fileDataRiser = midiAssetRiser.audio.audioFiles[0].fileData;
+
+					std::ofstream outfile(*file, std::ios_base::binary);
+					outfile.write((const char*)fileDataRiser.data(), fileDataRiser.size());
 				}
-
-				auto&& midi_fileRiser = midiSongRiser->data.midiFile.data;
-				auto&& midiAssetRiser = std::get<HmxAssetFile>(midi_fileRiser.file.e->getData().data.catagoryValues[0].value);
-				auto&& fileDataRiser = midiAssetRiser.audio.audioFiles[0].fileData;
-
-				std::ofstream outfile(*file, std::ios_base::binary);
-				outfile.write((const char*)fileDataRiser.data(), fileDataRiser.size());
 			}
 		}
 	}
