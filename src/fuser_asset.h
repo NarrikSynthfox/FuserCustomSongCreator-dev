@@ -231,10 +231,6 @@ struct SongSerializationCtx {
 	}
 
 	std::string midiSuffix() {
-		if (isTransition) {
-			return "";
-		}
-
 		return (curMidiType == MidiType::Major ? "_maj" : "_min");
 	}
 
@@ -611,7 +607,7 @@ struct MidiSongAsset {
 		fusionFile.serialize(ctx);
 
 		if (!ctx.loading) {
-			std::string fileName = ctx.subCelName() + "_midisong" + (ctx.curType.value == CelType::Type::Beat ? "" : (ctx.curMidiType == MidiType::Major ? "_maj" : "_min"));
+			std::string fileName = ctx.subCelName() + "_midisong" + (ctx.curMidiType == MidiType::Major ? "_maj" : "_min");
 			file.serialize(ctx, ctx.folderRoot() + ctx.subCelFolder(), fileName);
 
 			hmxAsset.originalFilename = fileName;
@@ -649,7 +645,7 @@ struct SongTransition {
 				majorAssets.emplace_back(std::move(midiAsset));
 			}
 
-			if (ctx.curType.value != CelType::Type::Beat) {
+			//if (ctx.curType.value != CelType::Type::Beat) {
 				for (auto &&v : ctx.getProp<ArrayProperty>("MinorMidiSongAssets")->values) {
 					AssetLink<MidiSongAsset> midiAsset;
 					midiAsset.ref = std::get<SoftObjectProperty>(v->v).name;
@@ -657,7 +653,7 @@ struct SongTransition {
 					midiAsset.serialize(ctx);
 					minorAssets.emplace_back(std::move(midiAsset));
 				}
-			}
+			//}
 		}
 
 		if (!ctx.loading) {
@@ -670,9 +666,9 @@ struct SongTransition {
 			ctx.serializePrimitive("BPM", bpm);
 
 			//Beats don't have a key, so they always serialize as EKey::Num
-			if (ctx.curType.value != CelType::Type::Beat) {
+			//if (ctx.curType.value != CelType::Type::Beat) {
 				ctx.serializeEnum("Key", ctx.songKey);
-			}
+			//}
 
 			for (auto &&a : majorAssets) a.serialize(ctx);
 			for (auto &&a : minorAssets) a.serialize(ctx);
@@ -704,7 +700,10 @@ struct CelData {
 			}
 			else {
 				auto celTypeStr = celType->value.getString(ctx.getHeader());
-				if (celTypeStr == "ECelType::Bass") {
+				if (celTypeStr == "ECelType::Beat") {
+					type.value = CelType::Type::Beat;
+				}
+				else if (celTypeStr == "ECelType::Bass") {
 					type.value = CelType::Type::Bass;
 				}
 				else if (celTypeStr == "ECelType::Lead") {
@@ -732,10 +731,10 @@ struct CelData {
 		//@REVISIT
 		file.thisObjectPath = 4;
 		songTransitionFile.data.file.thisObjectPath = 4;
-		if (type.value == CelType::Type::Beat) {
-			file.thisObjectPath = 2;
-			songTransitionFile.data.file.thisObjectPath = 2;
-		}
+		//if (type.value == CelType::Type::Beat) {
+		//	file.thisObjectPath = 2;
+		//	songTransitionFile.data.file.thisObjectPath = 2;
+		//}
 
 		songTransitionFile.linkVal = ctx.getProp<ObjectProperty>("SongTransitionCelData")->linkVal;
 		songTransitionFile.serialize(ctx);
@@ -750,7 +749,7 @@ struct CelData {
 			}
 
 			//@TODO: Another special case for beats
-			if (ctx.curType.value != CelType::Type::Beat) {
+			//if (ctx.curType.value != CelType::Type::Beat) {
 				for (auto &&v : ctx.getProp<ArrayProperty>("MinorMidiSongAssets")->values) {
 					AssetLink<MidiSongAsset> midiAsset;
 					midiAsset.ref = std::get<SoftObjectProperty>(v->v).name;
@@ -758,7 +757,7 @@ struct CelData {
 					midiAsset.serialize(ctx);
 					minorAssets.emplace_back(std::move(midiAsset));
 				}
-			}
+			//}
 		}
 
 		if (!ctx.loading) {
@@ -771,9 +770,9 @@ struct CelData {
 			ctx.serializePrimitive("BPM", bpm);
 
 			//Beats don't have a key, so they always serialize as EKey::Num
-			if (ctx.curType.value != CelType::Type::Beat) {
+			//if (ctx.curType.value != CelType::Type::Beat) {
 				ctx.serializeEnum("Key", ctx.songKey);
-			}
+			//}
 			
 			auto prop = ctx.getOrCreateProp<EnumProperty>("Mode");
 			prop.propData->typeRef = ctx.getHeader().findOrCreateName("EnumProperty");
@@ -911,12 +910,12 @@ struct AssetRoot {
 				fileLink.linkVal = std::get<ObjectProperty>(v->v).linkVal;
 				fileLink.serialize(ctx);
 
-				if (fileLink.data.type.value != CelType::Type::Beat) {
+				//if (fileLink.data.type.value != CelType::Type::Beat) {
 					ctx.songName = songName = ctx.getProp<TextProperty>(fileLink.data.file.e, "Title")->strings.back();
 					ctx.bpm = bpm = ctx.getProp<PrimitiveProperty<i32>>(fileLink.data.file.e, "BPM")->data;
 					ctx.songKey = songKey = ctx.getProp<EnumProperty>(fileLink.data.file.e, "Key")->value.getString(fileLink.data.file.e->getHeader());
 					ctx.curKeyMode = keyMode = fileLink.data.mode;
-				}
+				//}
 
 				celData.emplace_back(std::move(fileLink));
 			}
