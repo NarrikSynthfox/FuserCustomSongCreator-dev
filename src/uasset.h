@@ -462,7 +462,7 @@ struct TextProperty {
 		else if (historyType == 0) {
 			buffer.serializeWithSize(strings, 3);
 		}
-		else if (historyType = 11) {
+		else if (historyType == 11) {
 			buffer.serialize(extras);
 			buffer.serializeWithSize(strings, 1);
 		}

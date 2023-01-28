@@ -58,7 +58,7 @@ void initAudio() {
 	gAudio.volume = BASS_GetConfig(BASS_CONFIG_GVOL_SAMPLE) / 10000;
 }
 
-void playOgg(const std::vector<uint8_t> &ogg) {
+void playOgg(const std::vector<uint8_t>& ogg) {
 	if (gAudio.currentMusic != 0) {
 		BASS_SampleFree(gAudio.currentMusic);
 	}
@@ -76,10 +76,10 @@ void playOgg(const std::vector<uint8_t> &ogg) {
 }
 
 void pauseMusic() {
-	
+
 }
 
-void display_playable_audio(PlayableAudio &audio,bool isRiser) {
+void display_playable_audio(PlayableAudio& audio, bool isRiser) {
 	if (audio.oggData.empty()) {
 		ImGui::Text("No ogg file loaded.");
 		return;
@@ -142,8 +142,8 @@ struct ImGuiErrorModalManager {
 
 	void update() {
 
-		for(auto it = errors.begin(); it != errors.end();) {
-			auto &&e = *it;
+		for (auto it = errors.begin(); it != errors.end();) {
+			auto&& e = *it;
 			bool remove = false;
 
 			if (ImGui::BeginPopupModal(getErrorName(e.id).c_str(), NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
@@ -151,7 +151,7 @@ struct ImGuiErrorModalManager {
 				ImGui::Separator();
 
 				if (ImGui::Button("OK", ImVec2(120, 0))) {
-					ImGui::CloseCurrentPopup(); 
+					ImGui::CloseCurrentPopup();
 					remove = true;
 				}
 				ImGui::SetItemDefaultFocus();
@@ -168,7 +168,7 @@ struct ImGuiErrorModalManager {
 };
 ImGuiErrorModalManager errorManager;
 
-static void ErrorModal(const char *name, const char *msg) {
+static void ErrorModal(const char* name, const char* msg) {
 	if (ImGui::BeginPopupModal(name, NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
 		ImGui::Text(msg);
 		ImGui::Separator();
@@ -196,11 +196,11 @@ static void HelpMarker(const char* desc)
 }
 
 template<typename T>
-static void ChooseFuserEnum(const char *label, std::string &out) {
+static void ChooseFuserEnum(const char* label, std::string& out) {
 	auto values = T::GetValues();
 
-	auto getter = [](void *data, int idx, const char **out_str) {
-		auto &&d = reinterpret_cast<std::vector<std::string>*>(data);
+	auto getter = [](void* data, int idx, const char** out_str) {
+		auto&& d = reinterpret_cast<std::vector<std::string>*>(data);
 		*out_str = (*d)[idx].c_str();
 		return true;
 	};
@@ -219,11 +219,11 @@ static void ChooseFuserEnum(const char *label, std::string &out) {
 }
 
 template<typename T>
-static void ChooseFuserEnum(const char *label, typename T::Value &out) {
+static void ChooseFuserEnum(const char* label, typename T::Value& out) {
 	auto values = T::GetValues();
 
-	auto getter = [](void *data, int idx, const char **out_str) {
-		auto &&d = reinterpret_cast<std::vector<std::string>*>(data);
+	auto getter = [](void* data, int idx, const char** out_str) {
+		auto&& d = reinterpret_cast<std::vector<std::string>*>(data);
 		*out_str = (*d)[idx].c_str();
 		return true;
 	};
@@ -259,7 +259,7 @@ static std::optional<std::string> OpenFile(LPCSTR filter) {
 	return std::nullopt;
 }
 
-static std::optional<std::string> SaveFile(LPCSTR filter, LPCSTR ext, const std::string &fileName) {
+static std::optional<std::string> SaveFile(LPCSTR filter, LPCSTR ext, const std::string& fileName) {
 	CHAR szFileName[MAX_PATH];
 
 	// open a file name
@@ -297,15 +297,15 @@ struct MainContext {
 };
 MainContext gCtx;
 
-void load_file(DataBuffer &&dataBuf) {
+void load_file(DataBuffer&& dataBuf) {
 	gCtx.currentPak = std::make_unique<MainContext::CurrentPak>();
 	gCtx.saveLocation.clear();
 
-	auto &&pak = gCtx.currentPak->pak;
+	auto&& pak = gCtx.currentPak->pak;
 
 	dataBuf.serialize(pak);
 
-	for (auto &&e : pak.entries) {
+	for (auto&& e : pak.entries) {
 		if (auto data = std::get_if<PakFile::PakEntry::PakAssetData>(&e.data)) {
 			auto pos = e.name.find("DLC/Songs/");
 			if (pos != std::string::npos) {
@@ -414,7 +414,7 @@ static int ValidateShortName(ImGuiInputTextCallbackData* data) {
 }
 
 void display_main_properties() {
-	auto &&root = gCtx.currentPak->root;
+	auto&& root = gCtx.currentPak->root;
 
 	if (ImGui::InputText("Short Name", &root.shortName, ImGuiInputTextFlags_CallbackCharFilter, ValidateShortName)) {
 		gCtx.saveLocation.clear(); //We clear the save location, since it needs to resolve to another file path.
@@ -434,10 +434,11 @@ void display_main_properties() {
 }
 
 std::string lastMoggError;
-void display_mogg_settings(FusionFileAsset &fusionFile, size_t idx, HmxAudio::PackageFile &mogg,bool isRiser) {
-	auto &&header = std::get<HmxAudio::PackageFile::MoggSampleResourceHeader>(mogg.resourceHeader);
+void display_mogg_settings(FusionFileAsset& fusionFile, size_t idx, HmxAudio::PackageFile& mogg, bool isRiser) {
+	auto&& header = std::get<HmxAudio::PackageFile::MoggSampleResourceHeader>(mogg.resourceHeader);
+
 	std::string buttonText = "Replace Disc Audio";
-	if(isRiser){
+	if (isRiser) {
 		buttonText = "Replace Riser Audio";
 	}
 	if (fusionFile.playableMoggs.size() <= idx) {
@@ -477,30 +478,36 @@ void display_mogg_settings(FusionFileAsset &fusionFile, size_t idx, HmxAudio::Pa
 		}
 	}
 
-	
 
-	display_playable_audio(fusionFile.playableMoggs[idx],isRiser);
+
+	display_playable_audio(fusionFile.playableMoggs[idx], isRiser);
 
 	ImGui::InputScalar("Sample Rate", ImGuiDataType_U32, &header.sample_rate);
+	
+	
+
 
 	ErrorModal("Ogg loading error", ("Failed to load ogg file:" + lastMoggError).c_str());
 }
 
-void display_cell_data(CelData &celData, FuserEnums::KeyMode::Value currentKeyMode) {
+
+
+
+void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMode, bool advancedMode = false) {
 	ChooseFuserEnum<FuserEnums::Instrument>("Instrument", celData.instrument);
 
 	// Disc Moggs
 
-	auto &&fusionFile = celData.majorAssets[0].data.fusionFile.data;
-	auto &&asset = std::get<HmxAssetFile>(fusionFile.file.e->getData().data.catagoryValues[0].value);
+	auto&& fusionFile = celData.majorAssets[0].data.fusionFile.data;
+	auto&& asset = std::get<HmxAssetFile>(fusionFile.file.e->getData().data.catagoryValues[0].value);
 	//auto &&mogg = asset.audio.audioFiles[0];
 
-	HmxAudio::PackageFile *fusionPackageFile = nullptr;
-	std::vector<HmxAudio::PackageFile *> moggFiles;
+	HmxAudio::PackageFile* fusionPackageFile = nullptr;
+	std::vector<HmxAudio::PackageFile*> moggFiles;
 	std::unordered_set<std::string> fusion_mogg_files;
 
 	{
-		for (auto &&file : asset.audio.audioFiles) {
+		for (auto&& file : asset.audio.audioFiles) {
 			if (file.fileType == "FusionPatchResource") {
 				fusionPackageFile = &file;
 			}
@@ -509,7 +516,7 @@ void display_cell_data(CelData &celData, FuserEnums::KeyMode::Value currentKeyMo
 			}
 		}
 
-		auto &&fusion = std::get<HmxAudio::PackageFile::FusionFileResource>(fusionPackageFile->resourceHeader);
+		auto&& fusion = std::get<HmxAudio::PackageFile::FusionFileResource>(fusionPackageFile->resourceHeader);
 		auto map = fusion.nodes.getNode("keymap");
 
 		for (auto c : map.children) {
@@ -517,7 +524,7 @@ void display_cell_data(CelData &celData, FuserEnums::KeyMode::Value currentKeyMo
 			fusion_mogg_files.emplace(nodes->getString("sample_path"));
 		}
 	}
-	
+
 	bool duplicate_moggs = fusion_mogg_files.size() == 1;
 
 	// Riser Moggs
@@ -551,7 +558,7 @@ void display_cell_data(CelData &celData, FuserEnums::KeyMode::Value currentKeyMo
 
 	bool duplicate_moggsRiser = fusion_mogg_filesRiser.size() == 1;
 	ImGui::NewLine();
-	
+
 	std::string primaryKey = "";
 	std::string secondaryKey = "";
 
@@ -563,52 +570,196 @@ void display_cell_data(CelData &celData, FuserEnums::KeyMode::Value currentKeyMo
 	std::string duplicateStringRiser = "Duplicate Riser Primary audio for Secondary audio?";
 	auto windowSize = ImGui::GetWindowSize();
 	auto oggWindowSize = 150;
-	ImGui::BeginChild("Primary", ImVec2(windowSize.x / 2, oggWindowSize));
-	ImGui::Text(("Primary (" + primaryKey + ")").c_str());
-	bool duplicate_changed = false;
+	if (ImGui::BeginTabBar("AudioStuff")) {
+		/*if (ImGui::BeginTabItem("Audio")) {
+			ImGui::BeginChild("Primary", ImVec2(windowSize.x / 2, oggWindowSize));
+			ImGui::Text(("Primary (" + primaryKey + ")").c_str());
+			bool duplicate_changed = false;
 
-	if (ImGui::CollapsingHeader("Disc Audio")) {
-		display_mogg_settings(fusionFile, 0, *moggFiles[0], false);
+			if (ImGui::CollapsingHeader("Disc Audio")) {
+				display_mogg_settings(fusionFile, 0, *moggFiles[0], false);
 
-		duplicate_changed = ImGui::Checkbox(duplicateString.c_str(), &duplicate_moggs);
-	}
+				duplicate_changed = ImGui::Checkbox(duplicateString.c_str(), &duplicate_moggs);
+			}
 
-	bool duplicate_changedRiser = false;
+			bool duplicate_changedRiser = false;
 
-	if (ImGui::CollapsingHeader("Riser Audio")) {
-		display_mogg_settings(fusionFileRiser, 0, *moggFilesRiser[0], true);
+			if (ImGui::CollapsingHeader("Riser Audio")) {
+				display_mogg_settings(fusionFileRiser, 0, *moggFilesRiser[0], true);
 
-		duplicate_changedRiser = ImGui::Checkbox(duplicateStringRiser.c_str(), &duplicate_moggsRiser);
-	}
-	if (duplicate_changed) {
-		if (duplicate_moggs) {
-			if (moggFiles.size() == 2) {
-				asset.audio.audioFiles.erase(asset.audio.audioFiles.begin() + 1);
+				duplicate_changedRiser = ImGui::Checkbox(duplicateStringRiser.c_str(), &duplicate_moggsRiser);
+			}
 
-				moggFiles.clear();
-				for (auto &&file : asset.audio.audioFiles) {
-					if (file.fileType == "FusionPatchResource") {
-						fusionPackageFile = &file;
+			if (duplicate_changed) {
+				if (duplicate_moggs) {
+					if (moggFiles.size() == 2) {
+						asset.audio.audioFiles.erase(asset.audio.audioFiles.begin() + 1);
+
+						moggFiles.clear();
+						for (auto&& file : asset.audio.audioFiles) {
+							if (file.fileType == "FusionPatchResource") {
+								fusionPackageFile = &file;
+							}
+							else if (file.fileType == "MoggSampleResource") {
+								moggFiles.emplace_back(&file);
+							}
+						}
 					}
-					else if (file.fileType == "MoggSampleResource") {
-						moggFiles.emplace_back(&file);
+
+					auto&& fusion = std::get<HmxAudio::PackageFile::FusionFileResource>(fusionPackageFile->resourceHeader);
+					auto map = fusion.nodes.getNode("keymap");
+
+					if (map.children.size() == 2) {
+						std::get<hmx_fusion_nodes*>(map.children[1].value)->getString("sample_path") = std::get<hmx_fusion_nodes*>(map.children[0].value)->getString("sample_path");
+					}
+				}
+				else {
+					if (moggFiles.size() == 1) {
+						asset.audio.audioFiles.insert(asset.audio.audioFiles.begin() + 1, *moggFiles[0]);
+
+						moggFiles.clear();
+						for (auto&& file : asset.audio.audioFiles) {
+							if (file.fileType == "FusionPatchResource") {
+								fusionPackageFile = &file;
+							}
+							else if (file.fileType == "MoggSampleResource") {
+								moggFiles.emplace_back(&file);
+							}
+						}
+					}
+
+					auto&& fusion = std::get<HmxAudio::PackageFile::FusionFileResource>(fusionPackageFile->resourceHeader);
+					auto map = fusion.nodes.getNode("keymap");
+
+					if (map.children.size() == 2) {
+						std::get<hmx_fusion_nodes*>(map.children[1].value)->getString("sample_path") = "second_key";
 					}
 				}
 			}
 
-			auto &&fusion = std::get<HmxAudio::PackageFile::FusionFileResource>(fusionPackageFile->resourceHeader);
-			auto map = fusion.nodes.getNode("keymap");
+			if (duplicate_changedRiser) {
+				if (duplicate_moggsRiser) {
+					if (moggFilesRiser.size() == 2) {
+						assetRiser.audio.audioFiles.erase(assetRiser.audio.audioFiles.begin() + 1);
 
-			if (map.children.size() == 2) {
-				std::get<hmx_fusion_nodes*>(map.children[1].value)->getString("sample_path") = std::get<hmx_fusion_nodes*>(map.children[0].value)->getString("sample_path");
+						moggFilesRiser.clear();
+						for (auto&& file : assetRiser.audio.audioFiles) {
+							if (file.fileType == "FusionPatchResource") {
+								fusionPackageFileRiser = &file;
+							}
+							else if (file.fileType == "MoggSampleResource") {
+								moggFilesRiser.emplace_back(&file);
+							}
+						}
+					}
+
+					auto&& fusionRiser = std::get<HmxAudio::PackageFile::FusionFileResource>(fusionPackageFileRiser->resourceHeader);
+					auto mapRiser = fusionRiser.nodes.getNode("keymap");
+
+					if (mapRiser.children.size() == 2) {
+						std::get<hmx_fusion_nodes*>(mapRiser.children[1].value)->getString("sample_path") = std::get<hmx_fusion_nodes*>(mapRiser.children[0].value)->getString("sample_path");
+					}
+				}
+				else {
+					if (moggFilesRiser.size() == 1) {
+						assetRiser.audio.audioFiles.insert(assetRiser.audio.audioFiles.begin() + 1, *moggFilesRiser[0]);
+
+						moggFilesRiser.clear();
+						for (auto&& file : assetRiser.audio.audioFiles) {
+							if (file.fileType == "FusionPatchResource") {
+								fusionPackageFileRiser = &file;
+							}
+							else if (file.fileType == "MoggSampleResource") {
+								moggFilesRiser.emplace_back(&file);
+							}
+						}
+					}
+
+					auto&& fusionRiser = std::get<HmxAudio::PackageFile::FusionFileResource>(fusionPackageFileRiser->resourceHeader);
+					auto mapRiser = fusionRiser.nodes.getNode("keymap");
+
+					if (mapRiser.children.size() == 2) {
+						std::get<hmx_fusion_nodes*>(mapRiser.children[1].value)->getString("sample_path") = "second_key";
+					}
+				}
 			}
-		}
-		else {
-			if (moggFiles.size() == 1) {
-				asset.audio.audioFiles.insert(asset.audio.audioFiles.begin() + 1, *moggFiles[0]); 
+			ImGui::EndChild();
+
+			ImGui::SameLine();
+			ImGui::BeginChild("Secondary", ImVec2(windowSize.x / 2, 0));
+			ImGui::Text(("Secondary (" + secondaryKey + ")").c_str());
+			if (ImGui::CollapsingHeader("Disc Audio")) {
+				if (duplicate_moggs) {
+					ImGui::Text("Disc Audio is duplicated from the primary audio.");
+				}
+				else {
+					display_mogg_settings(fusionFile, 1, *moggFiles[1], false);
+				}
+			}
+			if (ImGui::CollapsingHeader("Riser Audio")) {
+				if (duplicate_moggsRiser) {
+					ImGui::Text("Riser Audio is duplicated from the primary audio.");
+				}
+				else {
+					display_mogg_settings(fusionFileRiser, 1, *moggFilesRiser[1], true);
+				}
+			}
+			ImGui::EndChild();
+			ImGui::EndTabItem();
+		}*/
+
+		if (ImGui::BeginTabItem("AudioAdvanced")) {
+
+			std::string fNameP = "C:/"+celData.shortName + "_";
+			
+			ImVec2 aRegion = ImGui::GetContentRegionAvail();
+
+			ImGui::BeginChild("AudioList", ImVec2(aRegion.x, aRegion.y / 2));
+			
+			static std::unordered_set<std::string> curNames;
+
+			static int selected_row = 0;
+
+			std::string fName = (moggFiles[selected_row]->fileName).substr(fNameP.length());
+			fName = fName.substr(0, fName.length() - 5);
+			static std::string fNameText = fName;
+			static std::string DEBUGBOX = "DEBUGBOX";
+			if (ImGui::BeginTable("AudioTable", 2, 0, ImVec2(aRegion.x / 4, (aRegion.y / 2) - 25))) {
+				ImGui::TableSetupColumn("Index", 0, 0.2);
+				ImGui::TableSetupColumn("Audio File");
+				ImGui::TableHeadersRow();
+				for (int i = 0; i < moggFiles.size(); i++)
+				{
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn();
+					if (ImGui::Selectable((std::to_string(i)).c_str(), selected_row == i, ImGuiSelectableFlags_SpanAllColumns)){
+						selected_row = i;
+					}
+					ImGui::TableNextColumn();
+					ImGui::Text((moggFiles[i]->fileName).c_str());
+				}
+				ImGui::EndTable();
+			}
+
+			ImGui::SameLine();
+
+			ImGui::BeginChild("AudioSettings", ImVec2(0, (aRegion.y / 2) - 25));
+			display_mogg_settings(fusionFile, selected_row, *moggFiles[selected_row], false);
+			
+			if (ImGui::InputText("File Name",&fNameText,ImGuiInputTextFlags_CharsNoBlank|ImGuiInputTextFlags_CallbackCharFilter|ImGuiInputTextFlags_EnterReturnsTrue,ValidateShortName)) {
 				
+				moggFiles[selected_row]->fileName = fNameP + fNameText + ".mogg";
+
+			}
+			ImGui::Text(DEBUGBOX.c_str());
+			ImGui::EndChild();
+
+			if (ImGui::Button("Add File")) {
+				HmxAudio::PackageFile newFile = *moggFiles[0];
+				asset.audio.audioFiles.insert(asset.audio.audioFiles.end() - 1, newFile);
+
 				moggFiles.clear();
-				for (auto &&file : asset.audio.audioFiles) {
+				for (auto&& file : asset.audio.audioFiles) {
 					if (file.fileType == "FusionPatchResource") {
 						fusionPackageFile = &file;
 					}
@@ -618,294 +769,280 @@ void display_cell_data(CelData &celData, FuserEnums::KeyMode::Value currentKeyMo
 				}
 			}
 
-			auto &&fusion = std::get<HmxAudio::PackageFile::FusionFileResource>(fusionPackageFile->resourceHeader);
+			ImGui::SameLine();
+
+			if (selected_row == 0)
+				ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+			if (ImGui::Button("Remove File")) {
+				if (selected_row == moggFiles.size() - 1) {
+					selected_row = selected_row - 1;
+					asset.audio.audioFiles.erase(asset.audio.audioFiles.begin() + selected_row + 1);
+				}
+				else {
+					asset.audio.audioFiles.erase(asset.audio.audioFiles.begin() + selected_row);
+				}
+				moggFiles.clear();
+				for (auto&& file : asset.audio.audioFiles) {
+					if (file.fileType == "FusionPatchResource") {
+						fusionPackageFile = &file;
+					}
+					else if (file.fileType == "MoggSampleResource") {
+						moggFiles.emplace_back(&file);
+					}
+				}
+			}
+			if (selected_row == 0)
+				ImGui::PopItemFlag();
+
+			ImGui::EndChild();
+
+			ImGui::BeginChild("KeymapList", ImVec2(aRegion.x, aRegion.y / 2));
+			auto&& fusion = std::get<HmxAudio::PackageFile::FusionFileResource>(fusionPackageFile->resourceHeader);
 			auto map = fusion.nodes.getNode("keymap");
 
-			if (map.children.size() == 2) {
-				std::get<hmx_fusion_nodes*>(map.children[1].value)->getString("sample_path") = "second_key";
-			}
-		}
-	}
+			static int selected_row_kmap = 0;
 
-	if (duplicate_changedRiser) {
-		if (duplicate_moggsRiser) {
-			if (moggFilesRiser.size() == 2) {
-				assetRiser.audio.audioFiles.erase(assetRiser.audio.audioFiles.begin() + 1);
-
-				moggFilesRiser.clear();
-				for (auto&& file : assetRiser.audio.audioFiles) {
-					if (file.fileType == "FusionPatchResource") {
-						fusionPackageFileRiser = &file;
-					}
-					else if (file.fileType == "MoggSampleResource") {
-						moggFilesRiser.emplace_back(&file);
-					}
+			if (ImGui::BeginTable("AudioTable", 2, 0, ImVec2(aRegion.x / 4, (aRegion.y / 2) - 25))) {
+				ImGui::TableSetupColumn("Index", 0, 0.2);
+				ImGui::TableSetupColumn("Keymap");
+				ImGui::TableHeadersRow();
+				for (int i = 0; i < map.children.size(); i++)
+				{
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn();
+					if (ImGui::Selectable(std::to_string(i).c_str(), selected_row_kmap == i, ImGuiSelectableFlags_SpanAllColumns))
+						selected_row_kmap = i;
+					ImGui::TableNextColumn();
+					ImGui::Text(("Keymap " + std::to_string(i)).c_str());
 				}
+				ImGui::EndTable();
 			}
 
-			auto&& fusionRiser = std::get<HmxAudio::PackageFile::FusionFileResource>(fusionPackageFileRiser->resourceHeader);
-			auto mapRiser = fusionRiser.nodes.getNode("keymap");
+			ImGui::SameLine();
 
-			if (mapRiser.children.size() == 2) {
-				std::get<hmx_fusion_nodes*>(mapRiser.children[1].value)->getString("sample_path") = std::get<hmx_fusion_nodes*>(mapRiser.children[0].value)->getString("sample_path");
+			ImGui::BeginChild("KeymapSettings", ImVec2(0, (aRegion.y / 2) - 25));
+
+			std::string sample_path = std::get<hmx_fusion_nodes*>(map.children[1].value)->getString("sample_path");
+			static int itemCurrent = 0;
+			std::vector<const char*> item_labels;
+			for (auto& mogg : moggFiles) {
+				item_labels.push_back(mogg->fileName.c_str());
 			}
+			ImGui::Combo("Mogg File", &itemCurrent, item_labels.data(), item_labels.size());
+
+			ImGui::EndChild();
+
+			ImGui::EndChild();
+
+			ImGui::EndTabItem();
 		}
-		else {
-			if (moggFilesRiser.size() == 1) {
-				assetRiser.audio.audioFiles.insert(assetRiser.audio.audioFiles.begin() + 1, *moggFilesRiser[0]);
 
-				moggFilesRiser.clear();
-				for (auto&& file : assetRiser.audio.audioFiles) {
-					if (file.fileType == "FusionPatchResource") {
-						fusionPackageFileRiser = &file;
-					}
-					else if (file.fileType == "MoggSampleResource") {
-						moggFilesRiser.emplace_back(&file);
-					}
-				}
-			}
+		if (ImGui::BeginTabItem("Advanced")) {
+			if (ImGui::Button("Export Disc Fusion File")) {
+				auto file = SaveFile("Fusion Text File (.fusion)\0*.fusion\0", "fusion", "");
+				if (file) {
+					for (auto&& f : asset.audio.audioFiles) {
+						if (f.fileType == "FusionPatchResource") {
 
-			auto&& fusionRiser = std::get<HmxAudio::PackageFile::FusionFileResource>(fusionPackageFileRiser->resourceHeader);
-			auto mapRiser = fusionRiser.nodes.getNode("keymap");
+							std::ofstream outFile(*file);
+							std::string outStr = hmx_fusion_parser::outputData(std::get<HmxAudio::PackageFile::FusionFileResource>(f.resourceHeader).nodes);
+							outFile << outStr;
 
-			if (mapRiser.children.size() == 2) {
-				std::get<hmx_fusion_nodes*>(mapRiser.children[1].value)->getString("sample_path") = "second_key";
-			}
-		}
-	}
-	ImGui::EndChild();
-
-	ImGui::SameLine();
-	ImGui::BeginChild("Secondary", ImVec2(windowSize.x / 2, oggWindowSize));
-	ImGui::Text(("Secondary (" + secondaryKey + ")").c_str());
-	if (ImGui::CollapsingHeader("Disc Audio")) {
-		if (duplicate_moggs) {
-			ImGui::Text("Disc Audio is duplicated from the primary audio.");
-		}
-		else {
-			display_mogg_settings(fusionFile, 1, *moggFiles[1], false);
-		}
-	}
-	if (ImGui::CollapsingHeader("Riser Audio")) {
-		if (duplicate_moggsRiser) {
-			ImGui::Text("Riser Audio is duplicated from the primary audio.");
-		}
-		else {
-			display_mogg_settings(fusionFileRiser, 1, *moggFilesRiser[1], true);
-		}
-	}
-	ImGui::EndChild();
-	
-
-	
-
-	ImGui::NewLine();
-	
-	// Advanced
-	//
-
-	if (ImGui::CollapsingHeader("Advanced")) {
-		if (ImGui::Button("Export Disc Fusion File")) {
-			auto file = SaveFile("Fusion Text File (.fusion)\0*.fusion\0", "fusion", "");
-			if (file) {
-				for (auto &&f : asset.audio.audioFiles) {
-					if (f.fileType == "FusionPatchResource") {
-
-						std::ofstream outFile(*file);
-						std::string outStr = hmx_fusion_parser::outputData(std::get<HmxAudio::PackageFile::FusionFileResource>(f.resourceHeader).nodes);
-						outFile << outStr;
-
-						break;
+							break;
+						}
 					}
 				}
 			}
-		}
 
-		if (ImGui::Button("Import Disc Fusion File")) {
-			auto file = OpenFile("Fusion Text File (.fusion)\0*.fusion\0");
-			if (file) {
-				for (auto &&f : asset.audio.audioFiles) {
-					if (f.fileType == "FusionPatchResource") {
+			if (ImGui::Button("Import Disc Fusion File")) {
+				auto file = OpenFile("Fusion Text File (.fusion)\0*.fusion\0");
+				if (file) {
+					for (auto&& f : asset.audio.audioFiles) {
+						if (f.fileType == "FusionPatchResource") {
 
-						std::ifstream infile(*file, std::ios_base::binary);
-						std::vector<u8> fileData = std::vector<u8>(std::istreambuf_iterator<char>(infile), std::istreambuf_iterator<char>());
-						std::get<HmxAudio::PackageFile::FusionFileResource>(f.resourceHeader).nodes = hmx_fusion_parser::parseData(fileData);
+							std::ifstream infile(*file, std::ios_base::binary);
+							std::vector<u8> fileData = std::vector<u8>(std::istreambuf_iterator<char>(infile), std::istreambuf_iterator<char>());
+							std::get<HmxAudio::PackageFile::FusionFileResource>(f.resourceHeader).nodes = hmx_fusion_parser::parseData(fileData);
 
-						break;
+							break;
+						}
 					}
 				}
 			}
-		}
 
-		ImGui::Spacing();
+			ImGui::Spacing();
 
-		bool overwrite_midi = false;
-		bool maj = true;
+			bool overwrite_midi = false;
+			bool maj = true;
 
-		if (ImGui::Button("Overwrite Disc Major Midi File")) {
-			overwrite_midi = true;
-		}
-		else if (ImGui::Button("Overwrite Disc Minor Midi File")) {
-			overwrite_midi = true;
-			maj = false;
-		}
-
-		if (overwrite_midi) {
-			auto file = OpenFile("Harmonix Midi Resource File (.mid_pc)\0*.mid_pc\0");
-			if (file) {
-				AssetLink<MidiSongAsset>* midiSong = nullptr;
-				if (maj) {
-					midiSong = &celData.majorAssets[0];
-				}
-				else {
-					midiSong = &celData.minorAssets[0];
-				}
-
-				auto&& midi_file = midiSong->data.midiFile.data;
-				auto&& midiAsset = std::get<HmxAssetFile>(midi_file.file.e->getData().data.catagoryValues[0].value);
-
-				std::ifstream infile(*file, std::ios_base::binary);
-				std::vector<u8> fileData = std::vector<u8>(std::istreambuf_iterator<char>(infile), std::istreambuf_iterator<char>());
-				midiAsset.audio.audioFiles[0].fileData = std::move(fileData);
+			if (ImGui::Button("Overwrite Disc Major Midi File")) {
+				overwrite_midi = true;
 			}
-		}
-
-		ImGui::Spacing();
-
-		bool export_midi = false;
-
-		if (ImGui::Button("Export Disc Major Midi File")) {
-			export_midi = true;
-			maj = true;
-		}
-		else if (ImGui::Button("Export Disc Minor Midi File")) {
-			export_midi = true;
-			maj = false;
-		}
-
-		if (export_midi) {
-			auto file = SaveFile("Harmonix Midi Resource File (.mid_pc)\0*.mid_pc\0", "mid_pc", "");
-			if (file) {
-				AssetLink<MidiSongAsset>* midiSong = nullptr;
-				if (maj) {
-					midiSong = &celData.majorAssets[0];
-				}
-				else {
-					midiSong = &celData.minorAssets[0];
-				}
-
-				auto&& midi_file = midiSong->data.midiFile.data;
-				auto&& midiAsset = std::get<HmxAssetFile>(midi_file.file.e->getData().data.catagoryValues[0].value);
-				auto&& fileData = midiAsset.audio.audioFiles[0].fileData;
-
-				std::ofstream outfile(*file, std::ios_base::binary);
-				outfile.write((const char*)fileData.data(), fileData.size());
+			else if (ImGui::Button("Overwrite Disc Minor Midi File")) {
+				overwrite_midi = true;
+				maj = false;
 			}
-		}
-		
-		ImGui::Spacing();
-		ImGui::Spacing();
-		ImGui::Spacing();
 
-		if (ImGui::Button("Export Riser Fusion File")) {
-			auto file = SaveFile("Fusion Text File (.fusion)\0*.fusion\0", "fusion", "");
-			if (file) {
-				for (auto&& f : assetRiser.audio.audioFiles) {
-					if (f.fileType == "FusionPatchResource") {
+			if (overwrite_midi) {
+				auto file = OpenFile("Harmonix Midi Resource File (.mid_pc)\0*.mid_pc\0");
+				if (file) {
+					AssetLink<MidiSongAsset>* midiSong = nullptr;
+					if (maj) {
+						midiSong = &celData.majorAssets[0];
+					}
+					else {
+						midiSong = &celData.minorAssets[0];
+					}
 
-						std::ofstream outFile(*file);
-						std::string outStr = hmx_fusion_parser::outputData(std::get<HmxAudio::PackageFile::FusionFileResource>(f.resourceHeader).nodes);
-						outFile << outStr;
+					auto&& midi_file = midiSong->data.midiFile.data;
+					auto&& midiAsset = std::get<HmxAssetFile>(midi_file.file.e->getData().data.catagoryValues[0].value);
 
-						break;
+					std::ifstream infile(*file, std::ios_base::binary);
+					std::vector<u8> fileData = std::vector<u8>(std::istreambuf_iterator<char>(infile), std::istreambuf_iterator<char>());
+					midiAsset.audio.audioFiles[0].fileData = std::move(fileData);
+				}
+			}
+
+			ImGui::Spacing();
+
+			bool export_midi = false;
+
+			if (ImGui::Button("Export Disc Major Midi File")) {
+				export_midi = true;
+				maj = true;
+			}
+			else if (ImGui::Button("Export Disc Minor Midi File")) {
+				export_midi = true;
+				maj = false;
+			}
+
+			if (export_midi) {
+				auto file = SaveFile("Harmonix Midi Resource File (.mid_pc)\0*.mid_pc\0", "mid_pc", "");
+				if (file) {
+					AssetLink<MidiSongAsset>* midiSong = nullptr;
+					if (maj) {
+						midiSong = &celData.majorAssets[0];
+					}
+					else {
+						midiSong = &celData.minorAssets[0];
+					}
+
+					auto&& midi_file = midiSong->data.midiFile.data;
+					auto&& midiAsset = std::get<HmxAssetFile>(midi_file.file.e->getData().data.catagoryValues[0].value);
+					auto&& fileData = midiAsset.audio.audioFiles[0].fileData;
+
+					std::ofstream outfile(*file, std::ios_base::binary);
+					outfile.write((const char*)fileData.data(), fileData.size());
+				}
+			}
+
+			ImGui::Spacing();
+			ImGui::Spacing();
+			ImGui::Spacing();
+
+			if (ImGui::Button("Export Riser Fusion File")) {
+				auto file = SaveFile("Fusion Text File (.fusion)\0*.fusion\0", "fusion", "");
+				if (file) {
+					for (auto&& f : assetRiser.audio.audioFiles) {
+						if (f.fileType == "FusionPatchResource") {
+
+							std::ofstream outFile(*file);
+							std::string outStr = hmx_fusion_parser::outputData(std::get<HmxAudio::PackageFile::FusionFileResource>(f.resourceHeader).nodes);
+							outFile << outStr;
+
+							break;
+						}
 					}
 				}
 			}
-		}
 
-		if (ImGui::Button("Import Riser Fusion File")) {
-			auto file = OpenFile("Fusion Text File (.fusion)\0*.fusion\0");
-			if (file) {
-				for (auto&& f : assetRiser.audio.audioFiles) {
-					if (f.fileType == "FusionPatchResource") {
+			if (ImGui::Button("Import Riser Fusion File")) {
+				auto file = OpenFile("Fusion Text File (.fusion)\0*.fusion\0");
+				if (file) {
+					for (auto&& f : assetRiser.audio.audioFiles) {
+						if (f.fileType == "FusionPatchResource") {
 
-						std::ifstream infile(*file, std::ios_base::binary);
-						std::vector<u8> fileData = std::vector<u8>(std::istreambuf_iterator<char>(infile), std::istreambuf_iterator<char>());
-						std::get<HmxAudio::PackageFile::FusionFileResource>(f.resourceHeader).nodes = hmx_fusion_parser::parseData(fileData);
+							std::ifstream infile(*file, std::ios_base::binary);
+							std::vector<u8> fileData = std::vector<u8>(std::istreambuf_iterator<char>(infile), std::istreambuf_iterator<char>());
+							std::get<HmxAudio::PackageFile::FusionFileResource>(f.resourceHeader).nodes = hmx_fusion_parser::parseData(fileData);
 
-						break;
+							break;
+						}
 					}
 				}
 			}
-		}
 
-		ImGui::Spacing();
+			ImGui::Spacing();
 
-		bool overwrite_midiRiser = false;
-		bool majRiser = true;
-		
-		if (ImGui::Button("Overwrite Riser Major Midi File")) {
-			overwrite_midiRiser = true;
-		}
-		else if (ImGui::Button("Overwrite Riser Minor Midi File")) {
-			overwrite_midiRiser = true;
-			majRiser = false;
-		}
+			bool overwrite_midiRiser = false;
+			bool majRiser = true;
 
-		if (overwrite_midiRiser) {
-			auto file = OpenFile("Harmonix Midi Resource File (.mid_pc)\0*.mid_pc\0");
-			if (file) {
-				AssetLink<MidiSongAsset>* midiSongRiser = nullptr;
-				if (majRiser) {
-					midiSongRiser = &celData.songTransitionFile.data.majorAssets[0];
-				}
-				else {
-					midiSongRiser = &celData.songTransitionFile.data.minorAssets[0];
-				}
-
-				auto&& midi_fileRiser = midiSongRiser->data.midiFile.data;
-				auto&& midiAssetRiser = std::get<HmxAssetFile>(midi_fileRiser.file.e->getData().data.catagoryValues[0].value);
-
-				std::ifstream infile(*file, std::ios_base::binary);
-				std::vector<u8> fileData = std::vector<u8>(std::istreambuf_iterator<char>(infile), std::istreambuf_iterator<char>());
-				midiAssetRiser.audio.audioFiles[0].fileData = std::move(fileData);
+			if (ImGui::Button("Overwrite Riser Major Midi File")) {
+				overwrite_midiRiser = true;
 			}
-		}
-
-		ImGui::Spacing();
-
-
-		bool export_midiRiser = false;
-
-		if (ImGui::Button("Export Riser Major Midi File")) {
-			export_midiRiser = true;
-			majRiser = true;
-		}
-		else if (ImGui::Button("Export Riser Minor Midi File")) {
-			export_midiRiser = true;
-			majRiser = false;
-		}
-
-		if (export_midiRiser) {
-			auto file = SaveFile("Harmonix Midi Resource File (.mid_pc)\0*.mid_pc\0", "mid_pc", "");
-			if (file) {
-				AssetLink<MidiSongAsset>* midiSongRiser = nullptr;
-				if (majRiser) {
-					midiSongRiser = &celData.songTransitionFile.data.majorAssets[0];
-				}
-				else {
-					midiSongRiser = &celData.songTransitionFile.data.minorAssets[0];
-				}
-
-				auto&& midi_fileRiser = midiSongRiser->data.midiFile.data;
-				auto&& midiAssetRiser = std::get<HmxAssetFile>(midi_fileRiser.file.e->getData().data.catagoryValues[0].value);
-				auto&& fileDataRiser = midiAssetRiser.audio.audioFiles[0].fileData;
-
-				std::ofstream outfile(*file, std::ios_base::binary);
-				outfile.write((const char*)fileDataRiser.data(), fileDataRiser.size());
+			else if (ImGui::Button("Overwrite Riser Minor Midi File")) {
+				overwrite_midiRiser = true;
+				majRiser = false;
 			}
+
+			if (overwrite_midiRiser) {
+				auto file = OpenFile("Harmonix Midi Resource File (.mid_pc)\0*.mid_pc\0");
+				if (file) {
+					AssetLink<MidiSongAsset>* midiSongRiser = nullptr;
+					if (majRiser) {
+						midiSongRiser = &celData.songTransitionFile.data.majorAssets[0];
+					}
+					else {
+						midiSongRiser = &celData.songTransitionFile.data.minorAssets[0];
+					}
+
+					auto&& midi_fileRiser = midiSongRiser->data.midiFile.data;
+					auto&& midiAssetRiser = std::get<HmxAssetFile>(midi_fileRiser.file.e->getData().data.catagoryValues[0].value);
+
+					std::ifstream infile(*file, std::ios_base::binary);
+					std::vector<u8> fileData = std::vector<u8>(std::istreambuf_iterator<char>(infile), std::istreambuf_iterator<char>());
+					midiAssetRiser.audio.audioFiles[0].fileData = std::move(fileData);
+				}
+			}
+
+			ImGui::Spacing();
+
+
+			bool export_midiRiser = false;
+
+			if (ImGui::Button("Export Riser Major Midi File")) {
+				export_midiRiser = true;
+				majRiser = true;
+			}
+			else if (ImGui::Button("Export Riser Minor Midi File")) {
+				export_midiRiser = true;
+				majRiser = false;
+			}
+
+			if (export_midiRiser) {
+				auto file = SaveFile("Harmonix Midi Resource File (.mid_pc)\0*.mid_pc\0", "mid_pc", "");
+				if (file) {
+					AssetLink<MidiSongAsset>* midiSongRiser = nullptr;
+					if (majRiser) {
+						midiSongRiser = &celData.songTransitionFile.data.majorAssets[0];
+					}
+					else {
+						midiSongRiser = &celData.songTransitionFile.data.minorAssets[0];
+					}
+
+					auto&& midi_fileRiser = midiSongRiser->data.midiFile.data;
+					auto&& midiAssetRiser = std::get<HmxAssetFile>(midi_fileRiser.file.e->getData().data.catagoryValues[0].value);
+					auto&& fileDataRiser = midiAssetRiser.audio.audioFiles[0].fileData;
+
+					std::ofstream outfile(*file, std::ios_base::binary);
+					outfile.write((const char*)fileDataRiser.data(), fileDataRiser.size());
+				}
+			}
+			ImGui::EndTabItem();
 		}
-		
+
+
+		ImGui::EndTabBar();
 	}
 }
 
@@ -950,13 +1087,13 @@ void custom_song_creator_update(size_t width, size_t height) {
 			}
 
 			auto get_item = [](void* data, int idx, const char** out) -> bool {
-				std::vector<std::string> &devices = *(std::vector<std::string>*)data;
+				std::vector<std::string>& devices = *(std::vector<std::string>*)data;
 				*out = devices[idx].c_str();
 
 				return true;
 			};
 
-			
+
 			if (ImGui::Combo("Current Device", &gAudio.currentDevice, get_item, &devices, devices.size())) {
 				BASS_Stop();
 				BASS_SetDevice(gAudio.currentDevice);
@@ -985,9 +1122,9 @@ void custom_song_creator_update(size_t width, size_t height) {
 				extract_uexp = true;
 				save_file = "Fuser Midi File (*.midi_pc)\0.midi_pc\0";
 				ext = "midi_pc";
-				getData = [](const Asset &asset) {
-					auto &&midiAsset = std::get<HmxAssetFile>(asset.data.catagoryValues[0].value);
-					auto &&fileData = midiAsset.audio.audioFiles[0].fileData;
+				getData = [](const Asset& asset) {
+					auto&& midiAsset = std::get<HmxAssetFile>(asset.data.catagoryValues[0].value);
+					auto&& fileData = midiAsset.audio.audioFiles[0].fileData;
 					return fileData;
 				};
 			}
@@ -996,10 +1133,10 @@ void custom_song_creator_update(size_t width, size_t height) {
 				extract_uexp = true;
 				save_file = "Fuser Fusion File (*.fusion)\0.fusion\0";
 				ext = "fusion";
-				getData = [](const Asset &asset) {
-					auto &&assetFile = std::get<HmxAssetFile>(asset.data.catagoryValues[0].value);
-					
-					for (auto &&f : assetFile.audio.audioFiles) {
+				getData = [](const Asset& asset) {
+					auto&& assetFile = std::get<HmxAssetFile>(asset.data.catagoryValues[0].value);
+
+					for (auto&& f : assetFile.audio.audioFiles) {
 						if (f.fileType == "FusionPatchResource") {
 							std::string outStr = hmx_fusion_parser::outputData(std::get<HmxAudio::PackageFile::FusionFileResource>(f.resourceHeader).nodes);
 							std::vector<u8> out;
@@ -1037,7 +1174,7 @@ void custom_song_creator_update(size_t width, size_t height) {
 					if (out_file) {
 						auto fileData = getData(a);
 						std::ofstream outfile(*out_file, std::ios_base::binary);
-						outfile.write((const char *)fileData.data(), fileData.size());
+						outfile.write((const char*)fileData.data(), fileData.size());
 					}
 				}
 			}
@@ -1049,7 +1186,7 @@ void custom_song_creator_update(size_t width, size_t height) {
 		ImGui::EndMainMenuBar();
 	}
 
-	auto &&input = ImGui::GetIO();
+	auto&& input = ImGui::GetIO();
 
 	if (input.KeyCtrl) {
 		if (input.KeysDown['O'] && input.KeysDownDuration['O'] == 0.0f) {
@@ -1095,16 +1232,17 @@ void custom_song_creator_update(size_t width, size_t height) {
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 
 	ImGui::Begin("Fuser Custom Song Creator", nullptr, window_flags);
-	
+
 	if (gCtx.currentPak != nullptr) {
 		if (ImGui::BeginTabBar("Tabs")) {
 			if (ImGui::BeginTabItem("Main Properties")) {
+
 				display_main_properties();
 
 				ImGui::EndTabItem();
 			}
 
-			for (auto &&cel : gCtx.currentPak->root.celData) {
+			for (auto&& cel : gCtx.currentPak->root.celData) {
 				std::string tabName = "Song Cell - ";
 				tabName += cel.data.type.getString();
 				if (ImGui::BeginTabItem(tabName.c_str())) {
