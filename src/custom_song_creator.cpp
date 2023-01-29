@@ -569,9 +569,10 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 	std::string duplicateString = "Duplicate Disc Primary audio for Secondary audio?";
 	std::string duplicateStringRiser = "Duplicate Riser Primary audio for Secondary audio?";
 	auto windowSize = ImGui::GetWindowSize();
-	auto oggWindowSize = 150;
+	
 	if (ImGui::BeginTabBar("AudioStuff")) {
-		/*if (ImGui::BeginTabItem("Audio")) {
+		if (ImGui::BeginTabItem("Audio")) {
+			auto oggWindowSize = ImGui::GetContentRegionAvail().y;
 			ImGui::BeginChild("Primary", ImVec2(windowSize.x / 2, oggWindowSize));
 			ImGui::Text(("Primary (" + primaryKey + ")").c_str());
 			bool duplicate_changed = false;
@@ -706,9 +707,13 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 			}
 			ImGui::EndChild();
 			ImGui::EndTabItem();
-		}*/
+		}
 
-		if (ImGui::BeginTabItem("AudioAdvanced")) {
+
+		//AUDIO LIST, FOR INSTRUMENTS LATER
+
+
+		/*if (ImGui::BeginTabItem("AudioAdvanced")) {
 
 			std::string fNameP = "C:/"+celData.shortName + "_";
 			
@@ -748,7 +753,18 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 			
 			if (ImGui::InputText("File Name",&fNameText,ImGuiInputTextFlags_CharsNoBlank|ImGuiInputTextFlags_CallbackCharFilter|ImGuiInputTextFlags_EnterReturnsTrue,ValidateShortName)) {
 				
-				moggFiles[selected_row]->fileName = fNameP + fNameText + ".mogg";
+				std::string newName = fNameP + fNameText + ".mogg";
+				bool uniqueName = false;
+				std::unordered_set<std::string> fileNames;
+				for (auto& mogg : moggFiles) {
+					fileNames.insert(mogg->fileName);
+				}
+				int suffix = 0;
+				while (fileNames.find(newName) != fileNames.end()) {
+					std::string newName = fNameP + fNameText+ std::to_string(suffix) + ".mogg";
+					suffix++;
+				}
+				moggFiles[selected_row]->fileName = newName;
 
 			}
 			ImGui::Text(DEBUGBOX.c_str());
@@ -756,8 +772,20 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 
 			if (ImGui::Button("Add File")) {
 				HmxAudio::PackageFile newFile = *moggFiles[0];
-				asset.audio.audioFiles.insert(asset.audio.audioFiles.end() - 1, newFile);
+				std::unordered_set<std::string> names;
+				std::string newName = fNameP+"NewAudioFile"+".mogg";
+				bool uniqueName = false;
+				for (auto& obj : moggFiles) {
+					int suffix = 1;
+					while (names.find(newName) != names.end()) {
+						newName = fNameP + "NewAudioFile" + std::to_string(suffix) + ".mogg";
+						suffix++;
+					}
+					names.insert(newName);
+					newFile.fileName=newName;
+				}
 
+				asset.audio.audioFiles.insert(asset.audio.audioFiles.end() - 1, newFile);
 				moggFiles.clear();
 				for (auto&& file : asset.audio.audioFiles) {
 					if (file.fileType == "FusionPatchResource") {
@@ -835,7 +863,7 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 			ImGui::EndChild();
 
 			ImGui::EndTabItem();
-		}
+		}*/
 
 		if (ImGui::BeginTabItem("Advanced")) {
 			if (ImGui::Button("Export Disc Fusion File")) {
