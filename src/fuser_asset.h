@@ -667,11 +667,95 @@ struct SongTransition {
 
 			//Beats don't have a key, so they always serialize as EKey::Num
 			//if (ctx.curType.value != CelType::Type::Beat) {
-				ctx.serializeEnum("Key", ctx.songKey);
+			ctx.serializeEnum("Key", ctx.songKey);
 			//}
 
-			for (auto &&a : majorAssets) a.serialize(ctx);
-			for (auto &&a : minorAssets) a.serialize(ctx);
+			auto prop = ctx.getOrCreateProp<EnumProperty>("Mode");
+			prop.propData->typeRef = ctx.getHeader().findOrCreateName("EnumProperty");
+			prop.propData->length = 8;
+			prop.prop->enumType = ctx.getHeader().findOrCreateName("EKeyMode");
+			prop.prop->blank = 0;
+			prop.prop->value = ctx.getHeader().findOrCreateName(FuserEnums::FromValue<FuserEnums::KeyMode>(ctx.curKeyMode));
+
+			//Construct Transpose Table
+			{
+				struct Transpose {
+					PropertyData* data;
+				};
+				std::vector<Transpose> tpose;
+
+				auto&& transposes = *ctx.getProp<StructProperty>("Transposes");
+				for (auto&& v : transposes.values) {
+					for (auto&& p : std::get<IPropertyDataList*>(v->v)->properties) {
+						Transpose t;
+						t.data = &p;
+						tpose.emplace_back(std::move(t));
+					}
+				}
+
+				auto&& keyValues = FuserEnums::Key::GetValues();
+				auto find_idx = [&](const std::string& refKey) {
+					for (i32 i = 0; i < keyValues.size(); ++i) {
+						if (keyValues[i] == refKey) {
+							return i;
+						}
+					}
+
+					return -1;
+				};
+
+				//Check to see if we find ourself in the list (this means our key has changed)
+				for (auto&& p : tpose) {
+					std::string key = "EKey::" + p.data->nameRef.getString(ctx.getHeader());
+					if (key == ctx.songKey) {
+
+						size_t missingValue = 0;
+						for (size_t i = 0; i < keyValues.size(); ++i) {
+
+							bool found = false;
+							for (auto&& p : tpose) {
+								std::string refKey = "EKey::" + p.data->nameRef.getString(ctx.getHeader());
+								if (keyValues[i] == refKey) {
+									found = true;
+									break;
+								}
+							}
+
+							if (!found) {
+								missingValue = i;
+								break;
+							}
+						}
+
+						p.data->nameRef = ctx.getHeader().findOrCreateName(keyValues[missingValue].substr(sizeof("EKey::") - 1));
+						break;
+					}
+				}
+
+				//Now we can compute the offsets
+				i32 songKeyIdx = find_idx(ctx.songKey);
+				for (auto&& p : tpose) {
+					std::string key = "EKey::" + p.data->nameRef.getString(ctx.getHeader());
+					i32 idx = find_idx(key);
+					i32 offset = idx - songKeyIdx;
+					if (offset <= -6) {
+						offset += 12;
+					}
+					else if (offset >= 6) {
+						offset -= 12;
+					}
+					std::get<PrimitiveProperty<i32>>(p.data->value).data = offset;
+				}
+
+			}
+
+			for (auto&& a : majorAssets) {
+				a.serialize(ctx);
+			}
+
+			for (auto&& a : minorAssets) {
+				a.serialize(ctx);
+			}
 
 			file.serialize(ctx, ctx.folderRoot() + ctx.subCelFolder(), "Meta_" + ctx.subCelName());
 		}
