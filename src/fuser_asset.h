@@ -217,9 +217,21 @@ struct SongSerializationCtx {
 	FuserEnums::Genre::Value genre;
 	i32 year;
 	bool isTransition = false;
+	bool smallArt = false;
 
 	std::string folderRoot() {
 		return "Audio/Songs/" + shortName + "/";
+	}
+
+	std::string artRoot() {
+		return "UI/AlbumArt/";
+	}
+
+	std::string isSmallArt() {
+		if (smallArt) {
+			return "_small";
+		}
+		return "";
 	}
 
 	std::string subCelFolder() {
@@ -508,6 +520,17 @@ struct AssetLink {
 
 
 //////////
+
+struct IconFileAsset {
+	SongPakEntry file;
+
+	void serialize(SongSerializationCtx& ctx) {
+		if (!ctx.loading) {
+			file.serialize(ctx, ctx.artRoot(), "T_"+ctx.shortName+ctx.isSmallArt());
+			auto&& texture = std::get<Texture2D>(file.e->getData().data.catagoryValues[0].value);
+		}
+	}
+};
 
 struct MidiFileAsset {
 	SongPakEntry file;
@@ -880,6 +903,9 @@ struct AssetRoot {
 	SongPakEntry file;
 
 	std::vector<FileLink<CelData>> celData;
+	std::vector<FileLink<Texture2D>> textureData;
+	AssetLink<IconFileAsset> small_icon_link;
+	AssetLink<IconFileAsset> large_icon_link;
 
 	void serialize(SongSerializationCtx &ctx) {
 		ctx.shortName = shortName;
@@ -904,7 +930,14 @@ struct AssetRoot {
 			auto genreStr = genrePtr->value.getString(ctx.getHeader());
 			genre = FuserEnums::ToValue<FuserEnums::Genre>(genreStr);
 			ctx.genre = genre;
-
+			auto icon = ctx.getProp<SoftObjectProperty>(file.e, "SongIconImage");
+			small_icon_link.ref = icon->name;
+			ctx.smallArt = true;
+			small_icon_link.serialize(ctx);
+			ctx.smallArt = false;
+			icon = ctx.getProp<SoftObjectProperty>(file.e, "SongIconImage_Large");
+			large_icon_link.ref = icon->name;
+			large_icon_link.serialize(ctx);
 			auto &celArray = *ctx.getProp<ArrayProperty>(file.e, "Cels");
 			for (auto &&v : celArray.values) {
 				FileLink<CelData> fileLink;
@@ -922,6 +955,10 @@ struct AssetRoot {
 			}
 		}
 		else {
+			ctx.smallArt = true;
+			small_icon_link.serialize(ctx);
+			ctx.smallArt = false;
+			large_icon_link.serialize(ctx);
 			auto genreStr = FuserEnums::FromValue<FuserEnums::Genre>(genre);
 			ctx.serializeName("SongShortName", shortName);
 			ctx.serializeEnum("Genre", genreStr);

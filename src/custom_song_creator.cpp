@@ -15,7 +15,8 @@
 namespace fs = std::filesystem;
 
 #include "custom_song_pak_template.h"
-
+#include "ImageFile.h"
+#include "DDSFile.h"
 #include "moggcrypt/CCallbacks.h"
 #include "moggcrypt/VorbisEncrypter.h"
 
@@ -27,7 +28,7 @@ extern HWND G_hwnd;
 
 
 
-///////////////////
+
 
 struct AudioCtx {
 	HSAMPLE currentMusic = 0;
@@ -287,7 +288,9 @@ static std::optional<std::string> SaveFile(LPCSTR filter, LPCSTR ext, const std:
 
 struct MainContext {
 	std::string saveLocation;
-
+	bool has_art;
+	ImageFile art;
+	ID3D11Device* g_pd3dDevice;
 	struct CurrentPak {
 		PakFile pak;
 		AssetRoot root;
@@ -304,7 +307,7 @@ void load_file(DataBuffer &&dataBuf) {
 	auto &&pak = gCtx.currentPak->pak;
 
 	dataBuf.serialize(pak);
-
+	int i = 0;
 	for (auto &&e : pak.entries) {
 		if (auto data = std::get_if<PakFile::PakEntry::PakAssetData>(&e.data)) {
 			auto pos = e.name.find("DLC/Songs/");
@@ -321,9 +324,39 @@ void load_file(DataBuffer &&dataBuf) {
 				//Double check we got the name correct
 				if (e.name == ("DLC/Songs/" + shortName + "/Meta_" + shortName + ".uexp")) {
 					gCtx.currentPak->root.shortName = shortName;
-					break;
+					//break;
 				}
 			}
+			pos = e.name.find("UI/AlbumArt");
+			if (pos != std::string::npos) {
+				if (e.name.compare(e.name.length() - 5, 5, ".uexp") == 0) {
+					if (auto texture = std::get_if<Texture2D>(&data->data.catagoryValues[0].value)) {
+						pos = e.name.find("_small");
+						if (pos == std::string::npos) {
+							auto dds = DDSFile();
+							dds.VInitializeFromRaw(&texture->mips[0].mipData[0], texture->mips[0].mipData.size(), texture->mips[0].width, texture->mips[0].height);
+							gCtx.art = ImageFile();
+
+							uint8_t* uncompressedImageData = new uint8_t[texture->mips[0].width * texture->mips[0].height * 4];
+							auto width = texture->mips[0].width;
+							auto height = texture->mips[0].height;
+
+							uint8_t * uncompressedData_ = dds.VGetUncompressedImageData();
+							for (int y = 0; y < height; y++) {
+								for (int x = 0; x < width; x++) {
+									uncompressedImageData[(x + width * y) * 4 + 0] = uncompressedData_[(x + width * (height - 1 - y)) * 3 + 0];
+									uncompressedImageData[(x + width * y) * 4 + 1] = uncompressedData_[(x + width * (height - 1 - y)) * 3 + 1];
+									uncompressedImageData[(x + width * y) * 4 + 2] = uncompressedData_[(x + width * (height - 1 - y)) * 3 + 2];
+								}
+							}
+							gCtx.art.FromBytes(uncompressedImageData, texture->mips[0].width * texture->mips[0].height * 4, texture->mips[0].width, texture->mips[0].height);
+							gCtx.has_art = true;
+						}
+					}
+				}
+			}
+			i++;
+
 		}
 	}
 
@@ -431,6 +464,66 @@ void display_main_properties() {
 	ChooseFuserEnum<FuserEnums::KeyMode>("Mode", root.keyMode);
 	ChooseFuserEnum<FuserEnums::Genre>("Genre", root.genre);
 	ImGui::InputScalar("Year", ImGuiDataType_S32, &root.year);
+}
+//#include "stb_image_write.h"
+
+void update_texture(std::string filepath, AssetLink<IconFileAsset> icon) {
+
+	auto texture = &std::get<Texture2D>(icon.data.file.e->getData().data.catagoryValues[0].value);
+
+	for (int mip_index = 0; mip_index < texture->mips.size(); mip_index++) {
+		texture->mips[mip_index].width = (texture->mips[mip_index].width + 3) & ~3;
+		texture->mips[mip_index].height = (texture->mips[mip_index].height + 3) & ~3;
+
+
+
+		auto raw_data = gCtx.art.resizeAndGetData(texture->mips[mip_index].width, texture->mips[mip_index].height);
+
+		uint8_t* uncompressedImageData = new uint8_t[texture->mips[mip_index].width * texture->mips[mip_index].height * 3];
+		auto width = texture->mips[mip_index].width;
+		auto height = texture->mips[mip_index].height;
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				uncompressedImageData[(x + width * y) * 3 + 0] = raw_data[(x + width * (height - 1 - y)) * 4 + 0];
+				uncompressedImageData[(x + width * y) * 3 + 1] = raw_data[(x + width * (height - 1 - y)) * 4 + 1];
+				uncompressedImageData[(x + width * y) * 3 + 2] = raw_data[(x + width * (height - 1 - y)) * 4 + 2];
+
+			}
+		}
+
+		DDSFile ddsFile = DDSFile();
+		ddsFile.VConversionInitialize(uncompressedImageData, texture->mips[mip_index].width * texture->mips[mip_index].height * 3, texture->mips[mip_index].width, texture->mips[mip_index].height);
+		texture->mips[mip_index].mipData.clear();
+		auto len = ddsFile.GetLinearSize();
+		for (int i = 0; i < len; i++) {
+			texture->mips[mip_index].mipData.push_back(ddsFile.m_mainData[i]);
+		}
+		texture->mips[mip_index].len_1 = len;
+		texture->mips[mip_index].len_2 = len;
+	}
+}
+
+void display_album_art() {
+	auto&& root = gCtx.currentPak->root;
+
+	ImGui::Text("Album art resizes to 540x540px, choose source image appropriately for good quality");
+	if (ImGui::Button("Import Album Art")) {
+		auto file = OpenFile("Image File\0*.bmp;*.png;*.jpg;*.jpeg\0");
+		if (file) {
+			gCtx.art = ImageFile();
+			gCtx.art.FromFile(file.value());
+			
+			update_texture(file.value(), root.large_icon_link);
+			update_texture(file.value(), root.small_icon_link);
+
+
+			gCtx.has_art = true;
+		}
+	}
+	if (gCtx.has_art) {
+		gCtx.art.imgui_Display(gCtx.g_pd3dDevice);
+	}
+
 }
 
 std::string lastMoggError;
@@ -925,7 +1018,10 @@ void display_cell_data(CelData &celData, FuserEnums::KeyMode::Value currentKeyMo
 		}
 	}
 }
+void set_g_pd3dDevice(ID3D11Device* g_pd3dDevice) {
+	gCtx.g_pd3dDevice = g_pd3dDevice;
 
+}
 void custom_song_creator_update(size_t width, size_t height) {
 	bool do_open = false;
 	bool do_save = false;
@@ -997,6 +1093,10 @@ void custom_song_creator_update(size_t width, size_t height) {
 			std::string save_file;
 			std::string ext;
 			std::function<std::vector<u8>(const Asset&)> getData;
+
+			if (ImGui::MenuItem("Load Pak and pop in album art")) {
+				__debugbreak();
+			}
 
 			if (ImGui::MenuItem("Extract Midi From uexp")) {
 				extract_uexp = true;
@@ -1118,6 +1218,11 @@ void custom_song_creator_update(size_t width, size_t height) {
 			if (ImGui::BeginTabItem("Main Properties")) {
 				display_main_properties();
 
+				ImGui::EndTabItem();
+			}
+
+			if (ImGui::BeginTabItem("Album Art")) {
+				display_album_art();
 				ImGui::EndTabItem();
 			}
 
