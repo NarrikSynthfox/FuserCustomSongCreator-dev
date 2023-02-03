@@ -652,13 +652,13 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 		std::swap(primaryKey, secondaryKey);
 	}
 
-	std::string duplicateString = "Duplicate Disc Primary audio for Secondary audio?";
-	std::string duplicateStringRiser = "Duplicate Riser Primary audio for Secondary audio?";
+	std::string duplicateString = "Same Disc audio for both key modes?";
+	std::string duplicateStringRiser = "Same Riser audio for both key modes?";
 	auto windowSize = ImGui::GetWindowSize();
 
 	auto oggWindowSize = ImGui::GetContentRegionAvail().y / 2;
 	ImGui::BeginChild("Primary", ImVec2(windowSize.x / 2, oggWindowSize));
-	ImGui::Text(("Primary (" + primaryKey + ")").c_str());
+	ImGui::Text("Major Key");
 	bool duplicate_changed = false;
 
 	if (ImGui::CollapsingHeader("Disc Audio")) {
@@ -772,10 +772,10 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 
 	ImGui::SameLine();
 	ImGui::BeginChild("Secondary", ImVec2(windowSize.x / 2, oggWindowSize));
-	ImGui::Text(("Secondary (" + secondaryKey + ")").c_str());
+	ImGui::Text("Minor Key");
 	if (ImGui::CollapsingHeader("Disc Audio")) {
 		if (duplicate_moggs) {
-			ImGui::Text("Disc Audio is duplicated from the primary audio.");
+			ImGui::Text("Disc Audio is duplicated for both key modes.");
 		}
 		else {
 			display_mogg_settings(fusionFile, 1, *moggFiles[1], false);
@@ -783,7 +783,7 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 	}
 	if (ImGui::CollapsingHeader("Riser Audio")) {
 		if (duplicate_moggsRiser) {
-			ImGui::Text("Riser Audio is duplicated from the primary audio.");
+			ImGui::Text("Riser Audio is duplicated for both key modes.");
 		}
 		else {
 			display_mogg_settings(fusionFileRiser, 1, *moggFilesRiser[1], true);
