@@ -14,6 +14,11 @@ file(GLOB SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/sha1.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/hmx_midifile.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/custom_song_creator.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ImageFile.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/DDSFile.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/stb_image.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/stb_image_resize.h
+
 
     ${CMAKE_CURRENT_SOURCE_DIR}/moggcrypt/aes.c
     ${CMAKE_CURRENT_SOURCE_DIR}/moggcrypt/CCallbacks.cpp
