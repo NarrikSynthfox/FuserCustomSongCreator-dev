@@ -301,6 +301,7 @@ struct MainContext {
 MainContext gCtx;
 
 void load_file(DataBuffer &&dataBuf) {
+	gCtx.has_art = false;
 	gCtx.currentPak = std::make_unique<MainContext::CurrentPak>();
 	gCtx.saveLocation.clear();
 
@@ -365,10 +366,102 @@ void load_file(DataBuffer &&dataBuf) {
 		__debugbreak();
 	}
 
-	SongSerializationCtx ctx;
-	ctx.loading = true;
-	ctx.pak = &pak;
-	gCtx.currentPak->root.serialize(ctx);
+	
+	if (gCtx.has_art) {
+		SongSerializationCtx ctx;
+		ctx.loading = true;
+		ctx.pak = &pak;
+		gCtx.currentPak->root.serialize(ctx);
+	}
+	else {
+		SongSerializationCtx ctx;
+		ctx.loading = true;
+		ctx.pak = &pak;
+		gCtx.currentPak->root.serialize(ctx);
+		std::string shortName = gCtx.currentPak->root.shortName;
+		std::string songName = gCtx.currentPak->root.songName;
+		std::string artistName = gCtx.currentPak->root.artistName;
+		i32 bpm = gCtx.currentPak->root.bpm;
+		std::string songKey = gCtx.currentPak->root.songKey;
+		FuserEnums::KeyMode::Value keyMode = gCtx.currentPak->root.keyMode;
+		FuserEnums::Genre::Value genre = gCtx.currentPak->root.genre;
+		i32 year = gCtx.currentPak->root.year;
+		std::vector<HmxAudio::PackageFile> celFusionPackageFileMajor;
+		std::vector<std::vector<HmxAudio::PackageFile>> celMoggFilesMajor;
+		for (auto cel : gCtx.currentPak->root.celData) {
+			auto&& fusionFile = cel.data.majorAssets[0].data.fusionFile.data;
+			auto&& asset = std::get<HmxAssetFile>(fusionFile.file.e->getData().data.catagoryValues[0].value);
+			//auto &&mogg = asset.audio.audioFiles[0];
+
+			HmxAudio::PackageFile fusionPackageFile;
+			std::vector<HmxAudio::PackageFile> moggFiles;
+			std::unordered_set<std::string> fusion_mogg_files;
+
+
+			for (auto&& file : asset.audio.audioFiles) {
+				if (file.fileType == "FusionPatchResource") {
+					fusionPackageFile = file;
+				}
+				else if (file.fileType == "MoggSampleResource") {
+					moggFiles.emplace_back(file);
+				}
+			}
+			if (moggFiles.size() == 1) {
+				moggFiles.emplace_back(moggFiles[0]);
+			}
+			celFusionPackageFileMajor.emplace_back(fusionPackageFile);
+			celMoggFilesMajor.emplace_back(moggFiles);
+		}
+		
+		DataBuffer dataBuf;
+		dataBuf.buffer = (u8*)custom_song_pak_template;
+		dataBuf.size = sizeof(custom_song_pak_template);
+		load_file(std::move(dataBuf));
+
+		gCtx.currentPak->root.shortName = shortName;
+		gCtx.currentPak->root.songName = songName;
+		gCtx.currentPak->root.artistName = artistName;
+		gCtx.currentPak->root.bpm = bpm;
+		gCtx.currentPak->root.songKey = songKey;
+		gCtx.currentPak->root.keyMode = keyMode;
+		gCtx.currentPak->root.genre = genre;
+		gCtx.currentPak->root.year = year;
+		
+		int idx = 0;
+
+		for (auto cel : gCtx.currentPak->root.celData) {
+			auto&& fusionFile = cel.data.majorAssets[0].data.fusionFile.data;
+			auto&& asset = std::get<HmxAssetFile>(fusionFile.file.e->getData().data.catagoryValues[0].value);
+			//auto &&mogg = asset.audio.audioFiles[0];
+
+			HmxAudio::PackageFile* fusionPackageFile = nullptr;
+			std::vector<HmxAudio::PackageFile*> moggFiles;
+			std::unordered_set<std::string> fusion_mogg_files;
+
+			for (auto&& file : asset.audio.audioFiles) {
+				if (file.fileType == "FusionPatchResource") {
+					file.resourceHeader = celFusionPackageFileMajor[idx].resourceHeader;
+					file.fileData = celFusionPackageFileMajor[idx].fileData;
+					file.fileName = celFusionPackageFileMajor[idx].fileName;
+				}
+				else if (file.fileType == "MoggSampleResource") {
+					moggFiles.emplace_back(&file);
+					
+					
+					
+				}
+			}
+			int moggidx = 0;
+			for (auto& mogg : moggFiles) {
+				mogg->resourceHeader = celMoggFilesMajor[idx][moggidx].resourceHeader;
+				mogg->fileData = celMoggFilesMajor[idx][moggidx].fileData;
+				mogg->fileName = celMoggFilesMajor[idx][moggidx].fileName;
+				moggidx++;
+			}
+			idx++;
+		}
+		
+	}
 }
 
 void load_template() {
