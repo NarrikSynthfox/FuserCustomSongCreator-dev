@@ -388,6 +388,7 @@ void load_file(DataBuffer &&dataBuf) {
 		i32 year = gCtx.currentPak->root.year;
 		std::vector<HmxAudio::PackageFile> celFusionPackageFileMajor;
 		std::vector<std::vector<HmxAudio::PackageFile>> celMoggFilesMajor;
+		std::vector<std::string> instrumentTypes;
 		for (auto cel : gCtx.currentPak->root.celData) {
 			auto&& fusionFile = cel.data.majorAssets[0].data.fusionFile.data;
 			auto&& asset = std::get<HmxAssetFile>(fusionFile.file.e->getData().data.catagoryValues[0].value);
@@ -396,7 +397,7 @@ void load_file(DataBuffer &&dataBuf) {
 			HmxAudio::PackageFile fusionPackageFile;
 			std::vector<HmxAudio::PackageFile> moggFiles;
 			std::unordered_set<std::string> fusion_mogg_files;
-
+			instrumentTypes.push_back(cel.data.instrument);
 
 			for (auto&& file : asset.audio.audioFiles) {
 				if (file.fileType == "FusionPatchResource") {
@@ -428,12 +429,14 @@ void load_file(DataBuffer &&dataBuf) {
 		gCtx.currentPak->root.year = year;
 		
 		int idx = 0;
-
-		for (auto cel : gCtx.currentPak->root.celData) {
+		int celCount = 0;
+		for (auto &cel : gCtx.currentPak->root.celData) {
 			auto&& fusionFile = cel.data.majorAssets[0].data.fusionFile.data;
 			auto&& asset = std::get<HmxAssetFile>(fusionFile.file.e->getData().data.catagoryValues[0].value);
 			//auto &&mogg = asset.audio.audioFiles[0];
-
+			
+			cel.data.instrument = instrumentTypes[celCount];
+			celCount++;
 			HmxAudio::PackageFile* fusionPackageFile = nullptr;
 			std::vector<HmxAudio::PackageFile*> moggFiles;
 			std::unordered_set<std::string> fusion_mogg_files;
