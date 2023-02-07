@@ -17,6 +17,7 @@ namespace fs = std::filesystem;
 #include "custom_song_pak_template.h"
 #include "ImageFile.h"
 #include "DDSFile.h"
+#include "stb_image_resize.h"
 #include "moggcrypt/CCallbacks.h"
 #include "moggcrypt/VorbisEncrypter.h"
 
@@ -558,7 +559,7 @@ void display_main_properties() {
 }
 //#include "stb_image_write.h"
 
-void update_texture(std::string filepath, AssetLink<IconFileAsset> icon) {
+void update_texture(std::string filepath, AssetLink<IconFileAsset> icon,stbir_filter filter) {
 
 	auto texture = &std::get<Texture2D>(icon.data.file.e->getData().data.catagoryValues[0].value);
 
@@ -568,7 +569,7 @@ void update_texture(std::string filepath, AssetLink<IconFileAsset> icon) {
 
 
 
-		auto raw_data = gCtx.art.resizeAndGetData(texture->mips[mip_index].width, texture->mips[mip_index].height);
+		auto raw_data = gCtx.art.resizeAndGetDataWithFilter(texture->mips[mip_index].width, texture->mips[mip_index].height,filter);
 
 		uint8_t* uncompressedImageData = new uint8_t[texture->mips[mip_index].width * texture->mips[mip_index].height * 3];
 		auto width = texture->mips[mip_index].width;
@@ -596,6 +597,17 @@ void update_texture(std::string filepath, AssetLink<IconFileAsset> icon) {
 
 void display_album_art() {
 	auto&& root = gCtx.currentPak->root;
+	static stbir_filter filter = stbir_filter::STBIR_FILTER_DEFAULT;
+	const char* options[] = { "Default", "Box", "Triangle","Cubic B-spline", "Cattmull-Rom","Mitchell-Netrevalli"};
+	if (ImGui::BeginCombo("Resize Filter", options[int(filter)])) {
+		for (int i = 0; i < 6; i++) {
+			if (ImGui::Selectable(options[i])) {
+				filter = (stbir_filter)i;
+			}
+		}
+		ImGui::EndCombo();
+	}
+
 
 	ImGui::Text("Album art resizes to 540x540px, choose source image appropriately for good quality");
 	if (ImGui::Button("Import Album Art")) {
@@ -604,8 +616,8 @@ void display_album_art() {
 			gCtx.art = ImageFile();
 			gCtx.art.FromFile(file.value());
 			
-			update_texture(file.value(), root.large_icon_link);
-			update_texture(file.value(), root.small_icon_link);
+			update_texture(file.value(), root.large_icon_link, filter);
+			update_texture(file.value(), root.small_icon_link, filter);
 
 
 			gCtx.has_art = true;
