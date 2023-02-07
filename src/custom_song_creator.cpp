@@ -88,10 +88,7 @@ void display_playable_audio(PlayableAudio &audio,bool isRiser) {
 
 	auto active = BASS_ChannelIsActive(audio.channelHandle);
 	if (active != BASS_ACTIVE_PLAYING) {
-		std::string buttonText = "Play Disc Audio";
-		if (isRiser) {
-			buttonText = "Play Riser Audio";
-		}
+		std::string buttonText = "Play "+type+" Audio";
 		if (ImGui::Button(buttonText.c_str())) {
 			if (audio.audioHandle != 0) {
 				BASS_SampleFree(audio.audioHandle);
@@ -386,8 +383,8 @@ void load_file(DataBuffer &&dataBuf) {
 		FuserEnums::KeyMode::Value keyMode = gCtx.currentPak->root.keyMode;
 		FuserEnums::Genre::Value genre = gCtx.currentPak->root.genre;
 		i32 year = gCtx.currentPak->root.year;
-		std::vector<HmxAudio::PackageFile> celFusionPackageFileMajor;
-		std::vector<std::vector<HmxAudio::PackageFile>> celMoggFilesMajor;
+		std::vector<HmxAudio::PackageFile> celFusionPackageFile;
+		std::vector<std::vector<HmxAudio::PackageFile>> celMoggFiles;
 		std::vector<std::string> instrumentTypes;
 		for (auto cel : gCtx.currentPak->root.celData) {
 			auto&& fusionFile = cel.data.majorAssets[0].data.fusionFile.data;
@@ -410,8 +407,8 @@ void load_file(DataBuffer &&dataBuf) {
 			if (moggFiles.size() == 1) {
 				moggFiles.emplace_back(moggFiles[0]);
 			}
-			celFusionPackageFileMajor.emplace_back(fusionPackageFile);
-			celMoggFilesMajor.emplace_back(moggFiles);
+			celFusionPackageFile.emplace_back(fusionPackageFile);
+			celMoggFiles.emplace_back(moggFiles);
 		}
 		
 		DataBuffer dataBuf;
@@ -429,23 +426,21 @@ void load_file(DataBuffer &&dataBuf) {
 		gCtx.currentPak->root.year = year;
 		
 		int idx = 0;
-		int celCount = 0;
 		for (auto &cel : gCtx.currentPak->root.celData) {
 			auto&& fusionFile = cel.data.majorAssets[0].data.fusionFile.data;
 			auto&& asset = std::get<HmxAssetFile>(fusionFile.file.e->getData().data.catagoryValues[0].value);
 			//auto &&mogg = asset.audio.audioFiles[0];
 			
-			cel.data.instrument = instrumentTypes[celCount];
-			celCount++;
+			cel.data.instrument = instrumentTypes[idx];
 			HmxAudio::PackageFile* fusionPackageFile = nullptr;
 			std::vector<HmxAudio::PackageFile*> moggFiles;
 			std::unordered_set<std::string> fusion_mogg_files;
 
 			for (auto&& file : asset.audio.audioFiles) {
 				if (file.fileType == "FusionPatchResource") {
-					file.resourceHeader = celFusionPackageFileMajor[idx].resourceHeader;
-					file.fileData = celFusionPackageFileMajor[idx].fileData;
-					file.fileName = celFusionPackageFileMajor[idx].fileName;
+					file.resourceHeader = celFusionPackageFile[idx].resourceHeader;
+					file.fileData = celFusionPackageFile[idx].fileData;
+					file.fileName = celFusionPackageFile[idx].fileName;
 				}
 				else if (file.fileType == "MoggSampleResource") {
 					moggFiles.emplace_back(&file);
@@ -456,9 +451,9 @@ void load_file(DataBuffer &&dataBuf) {
 			}
 			int moggidx = 0;
 			for (auto& mogg : moggFiles) {
-				mogg->resourceHeader = celMoggFilesMajor[idx][moggidx].resourceHeader;
-				mogg->fileData = celMoggFilesMajor[idx][moggidx].fileData;
-				mogg->fileName = celMoggFilesMajor[idx][moggidx].fileName;
+				mogg->resourceHeader = celMoggFiles[idx][moggidx].resourceHeader;
+				mogg->fileData = celMoggFiles[idx][moggidx].fileData;
+				mogg->fileName = celMoggFiles[idx][moggidx].fileName;
 				moggidx++;
 			}
 			idx++;
@@ -623,12 +618,9 @@ void display_album_art() {
 }
 
 std::string lastMoggError;
-void display_mogg_settings(FusionFileAsset &fusionFile, size_t idx, HmxAudio::PackageFile &mogg,bool isRiser) {
+void display_mogg_settings(FusionFileAsset &fusionFile, size_t idx, HmxAudio::PackageFile &mogg,std::string type) {
 	auto &&header = std::get<HmxAudio::PackageFile::MoggSampleResourceHeader>(mogg.resourceHeader);
-	std::string buttonText = "Replace Disc Audio";
-	if(isRiser){
-		buttonText = "Replace Riser Audio";
-	}
+	std::string buttonText = "Replace "+type+" Audio";
 	if (fusionFile.playableMoggs.size() <= idx) {
 		fusionFile.playableMoggs.resize(idx + 1);
 	}
@@ -668,7 +660,7 @@ void display_mogg_settings(FusionFileAsset &fusionFile, size_t idx, HmxAudio::Pa
 
 	
 
-	display_playable_audio(fusionFile.playableMoggs[idx],isRiser);
+	display_playable_audio(fusionFile.playableMoggs[idx], type);
 
 	ImGui::InputScalar("Sample Rate", ImGuiDataType_U32, &header.sample_rate);
 
