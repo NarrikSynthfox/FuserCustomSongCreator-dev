@@ -80,7 +80,7 @@ void pauseMusic() {
 	
 }
 
-void display_playable_audio(PlayableAudio &audio,bool isRiser) {
+void display_playable_audio(PlayableAudio &audio,std::string type) {
 	if (audio.oggData.empty()) {
 		ImGui::Text("No ogg file loaded.");
 		return;
@@ -750,18 +750,18 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 	bool duplicate_changed = false;
 
 	if (ImGui::CollapsingHeader("Disc Audio")) {
-		display_mogg_settings(fusionFile, 0, *moggFiles[0], false);
+		display_mogg_settings(fusionFile, 0, *moggFiles[0], "Disc");
 
 		duplicate_changed = ImGui::Checkbox(duplicateString.c_str(), &duplicate_moggs);
-	}
+		}
 
 	bool duplicate_changedRiser = false;
 
 	if (ImGui::CollapsingHeader("Riser Audio")) {
-		display_mogg_settings(fusionFileRiser, 0, *moggFilesRiser[0], true);
+		display_mogg_settings(fusionFileRiser, 0, *moggFilesRiser[0], "Riser");
 
 		duplicate_changedRiser = ImGui::Checkbox(duplicateStringRiser.c_str(), &duplicate_moggsRiser);
-	}
+			}
 
 	if (duplicate_changed) {
 		if (duplicate_moggs) {
@@ -866,7 +866,7 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 			ImGui::Text("Disc Audio is duplicated for both key modes.");
 		}
 		else {
-			display_mogg_settings(fusionFile, 1, *moggFiles[1], false);
+			display_mogg_settings(fusionFile, 1, *moggFiles[1], "Disc");
 		}
 	}
 	if (ImGui::CollapsingHeader("Riser Audio")) {
@@ -874,7 +874,7 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 			ImGui::Text("Riser Audio is duplicated for both key modes.");
 		}
 		else {
-			display_mogg_settings(fusionFileRiser, 1, *moggFilesRiser[1], true);
+			display_mogg_settings(fusionFileRiser, 1, *moggFilesRiser[1], "Riser");
 		}
 	}
 	ImGui::EndChild();
