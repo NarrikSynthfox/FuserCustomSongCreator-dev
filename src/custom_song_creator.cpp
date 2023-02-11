@@ -926,6 +926,22 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 		for (auto c : map.children) {
 			auto nodes = std::get<hmx_fusion_nodes*>(c.value);
 			fusion_mogg_files.emplace(nodes->getString("sample_path"));
+			int mapidx = 0;
+			if (nodes->getChild("zone_label") == nullptr) {
+				hmx_fusion_node label;
+				label.key = "zone_label";
+				if (mapidx == 0) {
+					label.value = "Major";
+				}
+				else if (mapidx == 1) {
+					label.value = "Minor";
+				}
+				else {
+					label.value = "UNKNOWN";
+				}
+				nodes->children.insert(nodes->children.begin(), label);
+			}
+			mapidx++;
 		}
 	}
 
@@ -957,6 +973,22 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 		for (auto c : mapRiser.children) {
 			auto nodesRiser = std::get<hmx_fusion_nodes*>(c.value);
 			fusion_mogg_filesRiser.emplace(nodesRiser->getString("sample_path"));
+			int mapidx = 0;
+			if (nodesRiser->getChild("zone_label") == nullptr) {
+				hmx_fusion_node label;
+				label.key = "zone_label";
+				if (mapidx == 0) {
+					label.value = "Major";
+				}
+				else if (mapidx == 1) {
+					label.value = "Minor";
+				}
+				else {
+					label.value = "UNKNOWN";
+				}
+				nodesRiser->children.insert(nodesRiser->children.begin(), label);
+			}
+			mapidx++;
 		}
 	}
 
