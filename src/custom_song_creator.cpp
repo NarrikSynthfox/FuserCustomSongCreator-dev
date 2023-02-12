@@ -387,7 +387,9 @@ void load_file(DataBuffer&& dataBuf) {
 		std::vector<HmxAudio::PackageFile> celFusionPackageFile;
 		std::vector<std::vector<HmxAudio::PackageFile>> celMoggFiles;
 		std::vector<std::string> instrumentTypes;
+		std::vector<std::string> celShortName;
 		for (auto cel : gCtx.currentPak->root.celData) {
+			celShortName.emplace_back(cel.data.shortName);
 			auto&& fusionFile = cel.data.majorAssets[0].data.fusionFile.data;
 			auto&& asset = std::get<HmxAssetFile>(fusionFile.file.e->getData().data.catagoryValues[0].value);
 			//auto &&mogg = asset.audio.audioFiles[0];
@@ -404,9 +406,6 @@ void load_file(DataBuffer&& dataBuf) {
 				else if (file.fileType == "MoggSampleResource") {
 					moggFiles.emplace_back(file);
 				}
-			}
-			if (moggFiles.size() == 1) {
-				moggFiles.emplace_back(moggFiles[0]);
 			}
 			celFusionPackageFile.emplace_back(fusionPackageFile);
 			celMoggFiles.emplace_back(moggFiles);
@@ -428,6 +427,7 @@ void load_file(DataBuffer&& dataBuf) {
 
 		int idx = 0;
 		for (auto& cel : gCtx.currentPak->root.celData) {
+			cel.data.shortName = celShortName[idx];
 			auto&& fusionFile = cel.data.majorAssets[0].data.fusionFile.data;
 			auto&& asset = std::get<HmxAssetFile>(fusionFile.file.e->getData().data.catagoryValues[0].value);
 			//auto &&mogg = asset.audio.audioFiles[0];
@@ -436,12 +436,15 @@ void load_file(DataBuffer&& dataBuf) {
 			HmxAudio::PackageFile* fusionPackageFile = nullptr;
 			std::vector<HmxAudio::PackageFile*> moggFiles;
 			std::unordered_set<std::string> fusion_mogg_files;
-
+			if (celMoggFiles[idx].size() == 1) {
+				asset.audio.audioFiles.erase(asset.audio.audioFiles.begin() + 1);
+			}
 			for (auto&& file : asset.audio.audioFiles) {
 				if (file.fileType == "FusionPatchResource") {
 					file.resourceHeader = celFusionPackageFile[idx].resourceHeader;
 					file.fileData = celFusionPackageFile[idx].fileData;
 					file.fileName = celFusionPackageFile[idx].fileName;
+					fusionPackageFile = &file;
 				}
 				else if (file.fileType == "MoggSampleResource") {
 					moggFiles.emplace_back(&file);
@@ -450,12 +453,28 @@ void load_file(DataBuffer&& dataBuf) {
 
 				}
 			}
+			
 			int moggidx = 0;
+			
 			for (auto& mogg : moggFiles) {
 				mogg->resourceHeader = celMoggFiles[idx][moggidx].resourceHeader;
 				mogg->fileData = celMoggFiles[idx][moggidx].fileData;
 				mogg->fileName = celMoggFiles[idx][moggidx].fileName;
 				moggidx++;
+			}
+			
+			if (cel.data.type.value == CelType::Type::Beat) {
+				auto&& fusion = std::get<HmxAudio::PackageFile::FusionFileResource>(fusionPackageFile->resourceHeader);
+				auto& map = fusion.nodes.getNode("keymap");
+				map.children.emplace_back(map.children[0]);
+				std::string str = hmx_fusion_parser::outputData(map);
+				std::vector<std::uint8_t> vec(str.begin(), str.end());
+				map = hmx_fusion_parser::parseData(vec);
+				auto nodes1 = std::get<hmx_fusion_nodes*>(map.children[0].value);
+				auto nodes2 = std::get<hmx_fusion_nodes*>(map.children[1].value);
+				nodes1->getInt("max_note") = 71;
+				nodes2->getInt("root_note") = 84;
+				nodes2->getInt("min_note") = 72;
 			}
 			idx++;
 		}
@@ -784,9 +803,9 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 		advBtn = "Switch to Simple Mode";
 
 	if (ImGui::Button(advBtn.c_str()))
-		ImGui::OpenPopup("AdvSwitch");
+		ImGui::OpenPopup("Switch Modes?");
 
-	if (ImGui::BeginPopupModal("AdvSwitch", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::BeginPopupModal("Switch Modes?", NULL, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		ImGui::BeginChild("PopupHolder", ImVec2(420, 100));
 		if (advanced) {
@@ -1159,11 +1178,10 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 		else {
 			disc_advanced = fusion.nodes.getInt("edit_advanced") == 1;
 		}
-
+		int mapidx = 0;
 		for (auto c : map.children) {
 			auto nodes = std::get<hmx_fusion_nodes*>(c.value);
 			fusion_mogg_files.emplace(nodes->getString("sample_path"));
-			int mapidx = 0;
 			if (nodes->getChild("zone_label") == nullptr) {
 				hmx_fusion_node label;
 				label.key = "zone_label";
@@ -1219,10 +1237,10 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 		else {
 			rise_advanced = fusionRiser.nodes.getInt("edit_advanced") == 1;
 		}
+		int mapidx = 0;
 		for (auto c : mapRiser.children) {
 			auto nodesRiser = std::get<hmx_fusion_nodes*>(c.value);
 			fusion_mogg_filesRiser.emplace(nodesRiser->getString("sample_path"));
-			int mapidx = 0;
 			if (nodesRiser->getChild("zone_label") == nullptr) {
 				hmx_fusion_node label;
 				label.key = "zone_label";
@@ -1670,7 +1688,6 @@ void custom_song_creator_update(size_t width, size_t height) {
 	window_flags |= ImGuiWindowFlags_NoResize;
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-
 	ImGui::Begin("Fuser Custom Song Creator", nullptr, window_flags);
 
 	if (gCtx.currentPak != nullptr) {
