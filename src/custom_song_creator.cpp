@@ -695,9 +695,6 @@ void display_mogg_settings(FusionFileAsset& fusionFile, size_t idx, HmxAudio::Pa
 
 	ImGui::InputScalar("Sample Rate", ImGuiDataType_U32, &header.sample_rate);
 
-
-
-
 	ErrorModal("Ogg loading error", ("Failed to load ogg file:" + lastMoggError).c_str());
 }
 void display_keyzone_settings(hmx_fusion_nodes* keyzone, std::vector<HmxAudio::PackageFile*> moggFiles) {
@@ -1458,12 +1455,7 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 			ImGui::Spacing();
 
 
-	ImGui::BeginChild("Advanced - Disc", ImVec2(windowSize.x / 2, oggWindowSize));
-	if (ImGui::Button("Export Disc Fusion File")) {
-		auto file = SaveFile("Fusion Text File (.fusion)\0*.fusion\0", "fusion", "");
-		if (file) {
-			for (auto&& f : asset.audio.audioFiles) {
-				if (f.fileType == "FusionPatchResource") {
+			bool export_midiRiser = false;
 
 			if (ImGui::Button("Export Riser Major Midi File")) {
 				export_midiRiser = true;
@@ -1474,7 +1466,23 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 				majRiser = false;
 			}
 
-					break;
+			if (export_midiRiser) {
+				auto file = SaveFile("Harmonix Midi Resource File (.mid_pc)\0*.mid_pc\0", "mid_pc", "");
+				if (file) {
+					AssetLink<MidiSongAsset>* midiSongRiser = nullptr;
+					if (majRiser) {
+						midiSongRiser = &celData.songTransitionFile.data.majorAssets[0];
+					}
+					else {
+						midiSongRiser = &celData.songTransitionFile.data.minorAssets[0];
+					}
+
+					auto&& midi_fileRiser = midiSongRiser->data.midiFile.data;
+					auto&& midiAssetRiser = std::get<HmxAssetFile>(midi_fileRiser.file.e->getData().data.catagoryValues[0].value);
+					auto&& fileDataRiser = midiAssetRiser.audio.audioFiles[0].fileData;
+
+					std::ofstream outfile(*file, std::ios_base::binary);
+					outfile.write((const char*)fileDataRiser.data(), fileDataRiser.size());
 				}
 			}
 			ImGui::EndChild();
@@ -1685,7 +1693,6 @@ void custom_song_creator_update(size_t width, size_t height) {
 	if (gCtx.currentPak != nullptr) {
 		if (ImGui::BeginTabBar("Tabs")) {
 			if (ImGui::BeginTabItem("Main Properties")) {
-
 				display_main_properties();
 
 				ImGui::EndTabItem();
