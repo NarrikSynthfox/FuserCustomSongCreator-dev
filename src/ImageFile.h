@@ -8,8 +8,8 @@
 #include <stdint.h>
 #include <d3d11.h>
 #include <imgui/imgui.h>
-
-
+#include "stb_image.h"
+#include "stb_image_resize.h"
 
 
 class ImageFile {
@@ -23,6 +23,7 @@ public:
 	int getHeight();
 	uint8_t* getData();
 	uint8_t* resizeAndGetData(int desired_width, int desired_height);
+	uint8_t* resizeAndGetDataWithFilter(int desired_width, int desired_height, stbir_filter filter);
 	void FromBytes(uint8_t* bytes, int data_len, int width, int height);
 private:
 	bool LoadTexture(ID3D11Device* g_pd3dDevice, ID3D11ShaderResourceView** out_srv);

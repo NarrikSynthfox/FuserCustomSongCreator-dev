@@ -568,27 +568,18 @@ struct FusionFileAsset {
 				}
 			}
 
-			size_t idx = 0;
 			for (auto &&f : moggFiles) {
-				f->fileName = "C:/" + ctx.subCelName() + "_" + std::to_string(idx) + ".mogg"; //Yes, moggs require a drive (C:/) before it otherwise they won't load.
-
 				auto &&moggHeader = std::get<HmxAudio::PackageFile::MoggSampleResourceHeader>(f->resourceHeader);
 				moggHeader.numberOfSamples = (moggHeader.sample_rate * 60 * 4 * 32) / ctx.bpm;
-				++idx;
 			}
 
 			fusionFile->fileName = Game_Prefix + file.path + ".fusion";
 			auto &&fusion = std::get<HmxAudio::PackageFile::FusionFileResource>(fusionFile->resourceHeader);
 			auto map = fusion.nodes.getNode("keymap");
-
-			idx = 0;
 			for (auto c : map.children) {
 				auto nodes = std::get<hmx_fusion_nodes*>(c.value);
-				nodes->getString("sample_path") = moggFiles[idx % moggFiles.size()]->fileName;
 				auto&& ts = nodes->getNode("timestretch_settings");
 				ts.getInt("orig_tempo") = ctx.bpm;
-
-				++idx;
 			}
 		}
 	}
