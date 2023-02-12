@@ -39,6 +39,7 @@ size_t window_height = 800;
 
 //extern void window_loop();
 extern void custom_song_creator_update(size_t width, size_t height);
+extern void set_g_pd3dDevice(ID3D11Device* g_pd3dDevice);
 extern void initAudio();
 HWND G_hwnd;
 
@@ -124,6 +125,7 @@ int __stdcall WinMain(
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     // Main loop
+    
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));
     while (msg.message != WM_QUIT)
@@ -148,6 +150,7 @@ int __stdcall WinMain(
 		//ImGui::ShowDemoWindow();
 
 		//window_loop();
+        set_g_pd3dDevice(g_pd3dDevice);
 		custom_song_creator_update(window_width, window_height);
 
         // Rendering

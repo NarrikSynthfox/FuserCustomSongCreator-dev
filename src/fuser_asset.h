@@ -217,9 +217,21 @@ struct SongSerializationCtx {
 	FuserEnums::Genre::Value genre;
 	i32 year;
 	bool isTransition = false;
+	bool smallArt = false;
 
 	std::string folderRoot() {
 		return "Audio/Songs/" + shortName + "/";
+	}
+
+	std::string artRoot() {
+		return "UI/AlbumArt/";
+	}
+
+	std::string isSmallArt() {
+		if (smallArt) {
+			return "_small";
+		}
+		return "";
 	}
 
 	std::string subCelFolder() {
@@ -505,6 +517,17 @@ struct AssetLink {
 
 //////////
 
+struct IconFileAsset {
+	SongPakEntry file;
+
+	void serialize(SongSerializationCtx& ctx) {
+		if (!ctx.loading) {
+			file.serialize(ctx, ctx.artRoot(), "T_"+ctx.shortName+ctx.isSmallArt());
+			auto&& texture = std::get<Texture2D>(file.e->getData().data.catagoryValues[0].value);
+		}
+	}
+};
+
 struct MidiFileAsset {
 	SongPakEntry file;
 
@@ -545,27 +568,18 @@ struct FusionFileAsset {
 				}
 			}
 
-			size_t idx = 0;
 			for (auto &&f : moggFiles) {
-				f->fileName = "C:/" + ctx.subCelName() + "_" + std::to_string(idx) + ".mogg"; //Yes, moggs require a drive (C:/) before it otherwise they won't load.
-
 				auto &&moggHeader = std::get<HmxAudio::PackageFile::MoggSampleResourceHeader>(f->resourceHeader);
 				moggHeader.numberOfSamples = (moggHeader.sample_rate * 60 * 4 * 32) / ctx.bpm;
-				++idx;
 			}
 
 			fusionFile->fileName = Game_Prefix + file.path + ".fusion";
 			auto &&fusion = std::get<HmxAudio::PackageFile::FusionFileResource>(fusionFile->resourceHeader);
 			auto map = fusion.nodes.getNode("keymap");
-
-			idx = 0;
 			for (auto c : map.children) {
 				auto nodes = std::get<hmx_fusion_nodes*>(c.value);
-				nodes->getString("sample_path") = moggFiles[idx % moggFiles.size()]->fileName;
 				auto&& ts = nodes->getNode("timestretch_settings");
 				ts.getInt("orig_tempo") = ctx.bpm;
-
-				++idx;
 			}
 		}
 	}
@@ -645,15 +659,15 @@ struct SongTransition {
 				majorAssets.emplace_back(std::move(midiAsset));
 			}
 
-			//if (ctx.curType.value != CelType::Type::Beat) {
-				for (auto &&v : ctx.getProp<ArrayProperty>("MinorMidiSongAssets")->values) {
-					AssetLink<MidiSongAsset> midiAsset;
-					midiAsset.ref = std::get<SoftObjectProperty>(v->v).name;
-					midiAsset.data.major = false;
-					midiAsset.serialize(ctx);
-					minorAssets.emplace_back(std::move(midiAsset));
-				}
-			//}
+
+			for (auto &&v : ctx.getProp<ArrayProperty>("MinorMidiSongAssets")->values) {
+				AssetLink<MidiSongAsset> midiAsset;
+				midiAsset.ref = std::get<SoftObjectProperty>(v->v).name;
+				midiAsset.data.major = false;
+				midiAsset.serialize(ctx);
+				minorAssets.emplace_back(std::move(midiAsset));
+			}
+
 		}
 
 		if (!ctx.loading) {
@@ -666,10 +680,7 @@ struct SongTransition {
 			ctx.serializePrimitive("BPM", bpm);
 
 			//Beats don't have a key, so they always serialize as EKey::Num
-			//if (ctx.curType.value != CelType::Type::Beat) {
 			ctx.serializeEnum("Key", ctx.songKey);
-			//}
-
 			auto prop = ctx.getOrCreateProp<EnumProperty>("Mode");
 			prop.propData->typeRef = ctx.getHeader().findOrCreateName("EnumProperty");
 			prop.propData->length = 8;
@@ -815,10 +826,7 @@ struct CelData {
 		//@REVISIT
 		file.thisObjectPath = 4;
 		songTransitionFile.data.file.thisObjectPath = 4;
-		//if (type.value == CelType::Type::Beat) {
-		//	file.thisObjectPath = 2;
-		//	songTransitionFile.data.file.thisObjectPath = 2;
-		//}
+
 
 		songTransitionFile.linkVal = ctx.getProp<ObjectProperty>("SongTransitionCelData")->linkVal;
 		songTransitionFile.serialize(ctx);
@@ -833,7 +841,6 @@ struct CelData {
 			}
 
 			//@TODO: Another special case for beats
-			//if (ctx.curType.value != CelType::Type::Beat) {
 				for (auto &&v : ctx.getProp<ArrayProperty>("MinorMidiSongAssets")->values) {
 					AssetLink<MidiSongAsset> midiAsset;
 					midiAsset.ref = std::get<SoftObjectProperty>(v->v).name;
@@ -841,7 +848,6 @@ struct CelData {
 					midiAsset.serialize(ctx);
 					minorAssets.emplace_back(std::move(midiAsset));
 				}
-			//}
 		}
 
 		if (!ctx.loading) {
@@ -853,10 +859,9 @@ struct CelData {
 			bpm = std::clamp(bpm, 90, 157);
 			ctx.serializePrimitive("BPM", bpm);
 
-			//Beats don't have a key, so they always serialize as EKey::Num
-			//if (ctx.curType.value != CelType::Type::Beat) {
-				ctx.serializeEnum("Key", ctx.songKey);
-			//}
+			
+			ctx.serializeEnum("Key", ctx.songKey);
+
 			
 			auto prop = ctx.getOrCreateProp<EnumProperty>("Mode");
 			prop.propData->typeRef = ctx.getHeader().findOrCreateName("EnumProperty");
@@ -963,6 +968,9 @@ struct AssetRoot {
 	SongPakEntry file;
 
 	std::vector<FileLink<CelData>> celData;
+	std::vector<FileLink<Texture2D>> textureData;
+	AssetLink<IconFileAsset> small_icon_link;
+	AssetLink<IconFileAsset> large_icon_link;
 
 	void serialize(SongSerializationCtx &ctx) {
 		ctx.shortName = shortName;
@@ -987,24 +995,33 @@ struct AssetRoot {
 			auto genreStr = genrePtr->value.getString(ctx.getHeader());
 			genre = FuserEnums::ToValue<FuserEnums::Genre>(genreStr);
 			ctx.genre = genre;
-
+			auto icon = ctx.getProp<SoftObjectProperty>(file.e, "SongIconImage");
+			small_icon_link.ref = icon->name;
+			ctx.smallArt = true;
+			small_icon_link.serialize(ctx);
+			ctx.smallArt = false;
+			icon = ctx.getProp<SoftObjectProperty>(file.e, "SongIconImage_Large");
+			large_icon_link.ref = icon->name;
+			large_icon_link.serialize(ctx);
 			auto &celArray = *ctx.getProp<ArrayProperty>(file.e, "Cels");
 			for (auto &&v : celArray.values) {
 				FileLink<CelData> fileLink;
 				fileLink.linkVal = std::get<ObjectProperty>(v->v).linkVal;
 				fileLink.serialize(ctx);
 
-				//if (fileLink.data.type.value != CelType::Type::Beat) {
 					ctx.songName = songName = ctx.getProp<TextProperty>(fileLink.data.file.e, "Title")->strings.back();
 					ctx.bpm = bpm = ctx.getProp<PrimitiveProperty<i32>>(fileLink.data.file.e, "BPM")->data;
 					ctx.songKey = songKey = ctx.getProp<EnumProperty>(fileLink.data.file.e, "Key")->value.getString(fileLink.data.file.e->getHeader());
 					ctx.curKeyMode = keyMode = fileLink.data.mode;
-				//}
 
 				celData.emplace_back(std::move(fileLink));
 			}
 		}
 		else {
+			ctx.smallArt = true;
+			small_icon_link.serialize(ctx);
+			ctx.smallArt = false;
+			large_icon_link.serialize(ctx);
 			auto genreStr = FuserEnums::FromValue<FuserEnums::Genre>(genre);
 			ctx.serializeName("SongShortName", shortName);
 			ctx.serializeEnum("Genre", genreStr);

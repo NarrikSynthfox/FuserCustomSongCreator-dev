@@ -462,7 +462,7 @@ struct TextProperty {
 		else if (historyType == 0) {
 			buffer.serializeWithSize(strings, 3);
 		}
-		else if (historyType == 11) {
+		else if (historyType = 11) {
 			buffer.serialize(extras);
 			buffer.serializeWithSize(strings, 1);
 		}
@@ -1011,6 +1011,54 @@ struct HmxAudio {
 	}
 };
 
+
+struct Mip {
+	uint64_t entry_identifier;
+	uint32_t flags;
+	uint32_t len_1;
+	uint32_t len_2;
+	uint64_t offset;
+	std::vector<u8> mipData;
+	uint32_t width;
+	uint32_t height;
+	void serialize(DataBuffer& buffer) {
+		buffer.serialize(entry_identifier);
+		buffer.serialize(flags);
+		buffer.serialize(len_1);
+		buffer.serialize(len_2);
+		buffer.serialize(offset);
+		buffer.serializeWithSize(mipData, len_1);
+		buffer.serialize(width);
+		buffer.serialize(height);
+	}
+};
+struct Texture2D {
+	
+	std::vector<u8> header;
+	std::vector<u8> footer;
+	std::vector<Mip> mips;
+	uint64_t bad_file_switch_1;
+	uint64_t bad_file_switch_2;
+	uint32_t header_size = 355;
+	uint32_t footer_size = 0x10;
+	uint8_t mip_count = 10;
+
+	void serialize(DataBuffer& buffer) {
+	
+		buffer.serialize(bad_file_switch_1);
+		buffer.serialize(bad_file_switch_2);
+		// this is really hacky and it's because I dont want to RE/implement a full header for uexp texture files - this is switching between small and large texture files
+		if (bad_file_switch_2 == 5) {
+			header_size = 329;
+			mip_count = 9;
+		}
+		buffer.serializeWithSize(header, header_size);
+		buffer.serializeWithSize(mips, mip_count);
+
+		buffer.serializeWithSize(footer, footer_size);
+	}
+};
+
 struct HmxAssetFile {
 	StringRef64 assetName;
 	IPropertyDataList propList;
@@ -1105,7 +1153,7 @@ struct HmxMidiSongAsset {
 
 struct AssetData {
 	struct CatagoryValue {
-		using CatagoryVariant = std::variant<UObject, DataTableCategory, HmxAssetFile>;
+		using CatagoryVariant = std::variant<UObject, DataTableCategory, HmxAssetFile, Texture2D>;
 
 		CatagoryVariant value;
 		std::vector<u8> extraData;
@@ -1134,6 +1182,11 @@ struct AssetData {
 					HmxAssetFile asset;
 					b.serialize(asset);
 					v.value = std::move(asset);
+				}
+				else if (name == "Texture2D") {
+					Texture2D texture;
+					b.serialize(texture);
+					v.value = std::move(texture);
 				}
 				else {
 					UObject object;
