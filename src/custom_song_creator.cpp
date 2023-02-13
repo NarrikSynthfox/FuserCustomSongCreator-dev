@@ -305,7 +305,9 @@ struct MainContext {
 };
 MainContext gCtx;
 
-void load_file(DataBuffer&& dataBuf) {
+void load_file(DataBuffer&& dataBuf, bool loadTemplateAndOverwrite = false) {
+	ImageFile tempArt;
+	bool loaded_had_art = false;
 	gCtx.has_art = false;
 	gCtx.currentPak = std::make_unique<MainContext::CurrentPak>();
 	gCtx.saveLocation.clear();
@@ -371,14 +373,8 @@ void load_file(DataBuffer&& dataBuf) {
 		__debugbreak();
 	}
 
-
-	if (gCtx.has_art) {
-		SongSerializationCtx ctx;
-		ctx.loading = true;
-		ctx.pak = &pak;
-		gCtx.currentPak->root.serialize(ctx);
-	}
-	else {
+	
+	if (loadTemplateAndOverwrite) {
 		SongSerializationCtx ctx;
 		ctx.loading = true;
 		ctx.pak = &pak;
@@ -391,6 +387,10 @@ void load_file(DataBuffer&& dataBuf) {
 		FuserEnums::KeyMode::Value keyMode = gCtx.currentPak->root.keyMode;
 		FuserEnums::Genre::Value genre = gCtx.currentPak->root.genre;
 		i32 year = gCtx.currentPak->root.year;
+
+		if (gCtx.has_art) 
+			loaded_had_art = true;
+		
 		std::vector<HmxAudio::PackageFile> celFusionPackageFile;
 		std::vector<std::vector<HmxAudio::PackageFile>> celMoggFiles;
 		std::vector<std::string> instrumentTypes;
@@ -431,6 +431,8 @@ void load_file(DataBuffer&& dataBuf) {
 		gCtx.currentPak->root.keyMode = keyMode;
 		gCtx.currentPak->root.genre = genre;
 		gCtx.currentPak->root.year = year;
+		if (loaded_had_art)
+			gCtx.art = tempArt;
 
 		int idx = 0;
 		for (auto& cel : gCtx.currentPak->root.celData) {
@@ -469,23 +471,30 @@ void load_file(DataBuffer&& dataBuf) {
 				mogg->fileName = celMoggFiles[idx][moggidx].fileName;
 				moggidx++;
 			}
-			
-			if (cel.data.type.value == CelType::Type::Beat) {
-				auto&& fusion = std::get<HmxAudio::PackageFile::FusionFileResource>(fusionPackageFile->resourceHeader);
-				auto& map = fusion.nodes.getNode("keymap");
-				map.children.emplace_back(map.children[0]);
-				std::string str = hmx_fusion_parser::outputData(map);
-				std::vector<std::uint8_t> vec(str.begin(), str.end());
-				map = hmx_fusion_parser::parseData(vec);
-				auto nodes1 = std::get<hmx_fusion_nodes*>(map.children[0].value);
-				auto nodes2 = std::get<hmx_fusion_nodes*>(map.children[1].value);
-				nodes1->getInt("max_note") = 71;
-				nodes2->getInt("root_note") = 84;
-				nodes2->getInt("min_note") = 72;
+			auto&& fusion = std::get<HmxAudio::PackageFile::FusionFileResource>(fusionPackageFile->resourceHeader);
+			auto& map = fusion.nodes.getNode("keymap");
+			if (map.children.size() == 1) {
+				if (std::get<hmx_fusion_nodes*>(map.children[0].value)->getChild("edit_advanced") == nullptr || std::get<hmx_fusion_nodes*>(map.children[0].value)->getInt("edit_advanced") == 0) {
+					map.children.emplace_back(map.children[0]);
+					std::string str = hmx_fusion_parser::outputData(map);
+					std::vector<std::uint8_t> vec(str.begin(), str.end());
+					map = hmx_fusion_parser::parseData(vec);
+					auto nodes1 = std::get<hmx_fusion_nodes*>(map.children[0].value);
+					auto nodes2 = std::get<hmx_fusion_nodes*>(map.children[1].value);
+					nodes1->getInt("max_note") = 71;
+					nodes2->getInt("root_note") = 84;
+					nodes2->getInt("min_note") = 72;
+				}
 			}
 			idx++;
 		}
 
+	}
+	else {
+		SongSerializationCtx ctx;
+		ctx.loading = true;
+		ctx.pak = &pak;
+		gCtx.currentPak->root.serialize(ctx);
 	}
 }
 
@@ -1277,14 +1286,8 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 	bool duplicate_moggsRiser = fusion_mogg_filesRiser.size() == 1;
 
 	ImGui::NewLine();
-
-	std::string primaryKey = "";
-	std::string secondaryKey = "";
-
-	if (currentKeyMode == FuserEnums::KeyMode::Value::Minor) {
-		std::swap(primaryKey, secondaryKey);
-	}
-
+	
+	
 	auto windowSize = ImGui::GetWindowSize();
 
 	auto oggWindowSize = ImGui::GetContentRegionAvail().y - 25;
@@ -1679,7 +1682,7 @@ void custom_song_creator_update(size_t width, size_t height) {
 
 			DataBuffer dataBuf;
 			dataBuf.setupVector(fileData);
-			load_file(std::move(dataBuf));
+			load_file(std::move(dataBuf),true);
 
 			gCtx.saveLocation = *file;
 		}
