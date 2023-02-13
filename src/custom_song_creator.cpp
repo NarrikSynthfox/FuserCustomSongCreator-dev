@@ -894,7 +894,9 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 					c->getInt("start_offset_frame") = -1;
 					c->getInt("end_offset_frame") = -1;
 					c->getString("sample_path") = "C:/" + celShortName + "_" + std::to_string(idx) + ".mogg";
-					idx++;
+					if (!moggFiles.size() == 1) {
+						idx++;
+					}
 				}
 
 
