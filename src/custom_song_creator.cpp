@@ -81,7 +81,7 @@ void pauseMusic() {
 
 }
 
-void display_playable_audio(PlayableAudio& audio) {
+void display_playable_audio(PlayableAudio& audio,std::string addString) {
 	if (audio.oggData.empty()) {
 		ImGui::Text("No ogg file loaded.");
 		return;
@@ -89,7 +89,10 @@ void display_playable_audio(PlayableAudio& audio) {
 
 	auto active = BASS_ChannelIsActive(audio.channelHandle);
 	if (active != BASS_ACTIVE_PLAYING) {
-		std::string buttonText = "Play Audio";
+		std::string buttonText = "Play " + addString + " Audio";
+		if (addString == "") {
+			buttonText = "Play Audio";
+		}
 		if (ImGui::Button(buttonText.c_str())) {
 			if (audio.audioHandle != 0) {
 				BASS_SampleFree(audio.audioHandle);
@@ -108,6 +111,10 @@ void display_playable_audio(PlayableAudio& audio) {
 		}
 	}
 	else {
+		std::string buttonText = "Stop Playing " + addString + " Audio";
+		if (addString == "") {
+			buttonText = "Stop Playing Audio";
+		}
 		if (ImGui::Button("Stop")) {
 			BASS_ChannelStop(audio.channelHandle);
 		}
@@ -649,9 +656,13 @@ void display_album_art() {
 }
 
 std::string lastMoggError;
-void display_mogg_settings(FusionFileAsset& fusionFile, size_t idx, HmxAudio::PackageFile& mogg) {
+void display_mogg_settings(FusionFileAsset& fusionFile, size_t idx, HmxAudio::PackageFile& mogg, std::string addString) {
+	
 	auto&& header = std::get<HmxAudio::PackageFile::MoggSampleResourceHeader>(mogg.resourceHeader);
-	std::string buttonText = "Replace Audio";
+	std::string buttonText = "Replace "+addString+" Audio";
+	if (addString == "") {
+		buttonText = "Replace Audio";
+	}
 	if (fusionFile.playableMoggs.size() <= idx) {
 		fusionFile.playableMoggs.resize(idx + 1);
 	}
@@ -691,7 +702,7 @@ void display_mogg_settings(FusionFileAsset& fusionFile, size_t idx, HmxAudio::Pa
 
 
 
-	display_playable_audio(fusionFile.playableMoggs[idx]);
+	display_playable_audio(fusionFile.playableMoggs[idx],addString);
 
 	ImGui::InputScalar("Sample Rate", ImGuiDataType_U32, &header.sample_rate);
 
@@ -988,7 +999,7 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 
 		ImGui::BeginChild("AudioSettings", ImVec2((aRegion.x / 3) * 2, (aRegion.y / 3)));
 		ImGui::Text((moggFiles[currentAudioFile]->fileName).c_str());
-		display_mogg_settings(fusionFile, currentAudioFile, *moggFiles[currentAudioFile]);
+		display_mogg_settings(fusionFile, currentAudioFile, *moggFiles[currentAudioFile],"");
 		ImGui::EndChild();
 
 		ImGui::EndChild();
@@ -1043,9 +1054,15 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 	}
 	else {
 		bool duplicate_changed = false;
-
-		ImGui::Text("Major");
-		display_mogg_settings(fusionFile, 0, *moggFiles[0]);
+		if(duplicate_moggs){
+			ImGui::Text("Duplicated");
+			display_mogg_settings(fusionFile, 0, *moggFiles[0],"Duplicated");
+		}
+		else {
+			ImGui::Text("Major");
+			display_mogg_settings(fusionFile, 0, *moggFiles[0], "Major");
+		}
+		
 		
 		duplicate_changed = ImGui::Checkbox("Duplicate Audio?", &duplicate_moggs);
 
@@ -1098,12 +1115,10 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 			}
 		}
 		ImGui::Spacing();
-		if (duplicate_moggs) {
-			ImGui::Text("Minor audio is duplicated from major audio.");
-		}
-		else {
+
+		if(!duplicate_moggs){
 			ImGui::Text("Minor");
-			display_mogg_settings(fusionFile, 1, *moggFiles[1]);
+			display_mogg_settings(fusionFile, 1, *moggFiles[1],"Minor");
 		}
 		ImGui::Spacing();
 
