@@ -455,9 +455,6 @@ void load_file(DataBuffer&& dataBuf) {
 				}
 				else if (file.fileType == "MoggSampleResource") {
 					moggFiles.emplace_back(&file);
-
-
-
 				}
 			}
 			
@@ -469,10 +466,9 @@ void load_file(DataBuffer&& dataBuf) {
 				mogg->fileName = celMoggFiles[idx][moggidx].fileName;
 				moggidx++;
 			}
-			
-			if (cel.data.type.value == CelType::Type::Beat) {
-				auto&& fusion = std::get<HmxAudio::PackageFile::FusionFileResource>(fusionPackageFile->resourceHeader);
-				auto& map = fusion.nodes.getNode("keymap");
+			auto&& fusion = std::get<HmxAudio::PackageFile::FusionFileResource>(fusionPackageFile->resourceHeader);
+			auto& map = fusion.nodes.getNode("keymap");
+			if (map.children.size() == 1) {
 				map.children.emplace_back(map.children[0]);
 				std::string str = hmx_fusion_parser::outputData(map);
 				std::vector<std::uint8_t> vec(str.begin(), str.end());
@@ -487,6 +483,7 @@ void load_file(DataBuffer&& dataBuf) {
 		}
 
 	}
+	
 }
 
 void load_template() {
@@ -624,7 +621,7 @@ void update_texture(std::string filepath, AssetLink<IconFileAsset> icon, stbir_f
 void display_album_art() {
 	auto&& root = gCtx.currentPak->root;
 	static stbir_filter filter = stbir_filter::STBIR_FILTER_DEFAULT;
-	const char* options[] = { "Default", "Box", "Triangle","Cubic B-spline", "Cattmull-Rom","Mitchell-Netrevalli" };
+	/*const char* options[] = { "Default", "Box", "Triangle","Cubic B-spline", "Cattmull-Rom","Mitchell-Netrevalli" };
 	if (ImGui::BeginCombo("Resize Filter", options[int(filter)])) {
 		for (int i = 0; i < 6; i++) {
 			if (ImGui::Selectable(options[i])) {
@@ -632,8 +629,7 @@ void display_album_art() {
 			}
 		}
 		ImGui::EndCombo();
-	}
-
+	}*/
 
 	ImGui::Text("Album art resizes to 540x540px, choose source image appropriately for good quality");
 	if (ImGui::Button("Import Album Art")) {
@@ -1279,14 +1275,8 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 	bool duplicate_moggsRiser = fusion_mogg_filesRiser.size() == 1;
 
 	ImGui::NewLine();
-
-	std::string primaryKey = "";
-	std::string secondaryKey = "";
-
-	if (currentKeyMode == FuserEnums::KeyMode::Value::Minor) {
-		std::swap(primaryKey, secondaryKey);
-	}
-
+	
+	
 	auto windowSize = ImGui::GetWindowSize();
 
 	auto oggWindowSize = ImGui::GetContentRegionAvail().y - 25;
