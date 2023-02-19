@@ -882,6 +882,9 @@ struct CelData {
 			prop.prop->blank = 0;
 			prop.prop->value = ctx.getHeader().findOrCreateName(FuserEnums::FromValue<FuserEnums::KeyMode>(ctx.curKeyMode));
 
+			auto&& pickups = *ctx.getProp<ArrayProperty>("PickupBeats");
+			pickups.values.clear();
+
 			//Construct Transpose Table
 			{
 				struct Transpose {
