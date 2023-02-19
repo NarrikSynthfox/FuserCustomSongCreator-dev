@@ -148,5 +148,5 @@ void ImageFile::imgui_Display(ID3D11Device* g_pd3dDevice) {
 		IM_ASSERT(ret);
 		texture_loaded = true;
 	}
-	ImGui::Image((void*)image_texture, ImVec2(128, 128));
+	ImGui::Image((void*)image_texture, ImVec2(512,512));
 }

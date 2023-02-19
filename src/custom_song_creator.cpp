@@ -25,6 +25,9 @@ namespace fs = std::filesystem;
 
 #include "bass/bass.h"
 
+#define RGBCX_IMPLEMENTATION
+#include "rgbcx.h"
+
 extern HWND G_hwnd;
 
 
@@ -353,6 +356,7 @@ void load_file(DataBuffer&& dataBuf) {
 									uncompressedImageData[(x + width * y) * 4 + 0] = uncompressedData_[(x + width * (height - 1 - y)) * 3 + 0];
 									uncompressedImageData[(x + width * y) * 4 + 1] = uncompressedData_[(x + width * (height - 1 - y)) * 3 + 1];
 									uncompressedImageData[(x + width * y) * 4 + 2] = uncompressedData_[(x + width * (height - 1 - y)) * 3 + 2];
+									uncompressedImageData[(x + width * y) * 4 + 3] = 255;
 								}
 							}
 							gCtx.art.FromBytes(uncompressedImageData, texture->mips[0].width * texture->mips[0].height * 4, texture->mips[0].width, texture->mips[0].height);
@@ -583,7 +587,7 @@ void display_main_properties() {
 //#include "stb_image_write.h"
 
 void update_texture(std::string filepath, AssetLink<IconFileAsset> icon, stbir_filter filter) {
-
+	rgbcx::init();
 	auto texture = &std::get<Texture2D>(icon.data.file.e->getData().data.catagoryValues[0].value);
 
 	for (int mip_index = 0; mip_index < texture->mips.size(); mip_index++) {
@@ -592,29 +596,42 @@ void update_texture(std::string filepath, AssetLink<IconFileAsset> icon, stbir_f
 
 
 
-		auto raw_data = gCtx.art.resizeAndGetDataWithFilter(texture->mips[mip_index].width, texture->mips[mip_index].height, filter);
+		auto raw_data = gCtx.art.resizeAndGetData(texture->mips[mip_index].width, texture->mips[mip_index].height);
 
-		uint8_t* uncompressedImageData = new uint8_t[texture->mips[mip_index].width * texture->mips[mip_index].height * 3];
 		auto width = texture->mips[mip_index].width;
 		auto height = texture->mips[mip_index].height;
-		for (int y = 0; y < height; y++) {
-			for (int x = 0; x < width; x++) {
-				uncompressedImageData[(x + width * y) * 3 + 0] = raw_data[(x + width * (height - 1 - y)) * 4 + 0];
-				uncompressedImageData[(x + width * y) * 3 + 1] = raw_data[(x + width * (height - 1 - y)) * 4 + 1];
-				uncompressedImageData[(x + width * y) * 3 + 2] = raw_data[(x + width * (height - 1 - y)) * 4 + 2];
+		
+		uint8_t* compressedData = new uint8_t[width * height / 2];
 
+		
+		for (int y = 0; y < height; y += 4) {
+			for (int x = 0; x < width; x += 4) {
+				uint8_t* inData = new uint8_t[64]{ 0 };
+				for (int ypx = 0; ypx < 4; ypx++)
+				{
+					for (int xpx = 0; xpx < 4; xpx++)
+					{
+						for (int i = 0; i < 4; i++)
+						{
+							inData[(((ypx*4)+xpx)*4) + i] = raw_data[((((y+ypx) * width) + (x+xpx)) * 4) + i];
+						}
+					}
+				}
+				uint8_t* block = &compressedData[(y / 4 * width / 4 + x / 4) * 8];
+				rgbcx::encode_bc1(10,block, inData,true,false);
 			}
 		}
 
-		DDSFile ddsFile = DDSFile();
-		ddsFile.VConversionInitialize(uncompressedImageData, texture->mips[mip_index].width * texture->mips[mip_index].height * 3, texture->mips[mip_index].width, texture->mips[mip_index].height);
 		texture->mips[mip_index].mipData.clear();
-		auto len = ddsFile.GetLinearSize();
+
+		auto len = width*height/2;
 		for (int i = 0; i < len; i++) {
-			texture->mips[mip_index].mipData.push_back(ddsFile.m_mainData[i]);
+			texture->mips[mip_index].mipData.push_back(compressedData[i]);
 		}
 		texture->mips[mip_index].len_1 = len;
 		texture->mips[mip_index].len_2 = len;
+		
+		
 	}
 }
 
@@ -631,7 +648,7 @@ void display_album_art() {
 		ImGui::EndCombo();
 	}*/
 
-	ImGui::Text("Album art resizes to 540x540px, choose source image appropriately for good quality");
+	ImGui::Text("Album art resizes to 512x512px. Accepted formats: bmp,png,jpg,jpeg");
 	if (ImGui::Button("Import Album Art")) {
 		auto file = OpenFile("Image File\0*.bmp;*.png;*.jpg;*.jpeg\0");
 		if (file) {
@@ -816,7 +833,9 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 	{
 		ImGui::BeginChild("PopupHolder", ImVec2(420, 100));
 		if (advanced) {
+			
 			ImGui::BeginChild("Text", ImVec2(420, 69));
+			ImGui::Text(celShortName.c_str());
 			ImGui::Text("Are you sure you want to switch to Simple Mode?");
 			ImGui::TextWrapped("WARNING: This will reset audio file and keymap count, as well as the keymap midi, velocity, and offset settings.");
 			ImGui::EndChild();
@@ -824,8 +843,7 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 			if (ImGui::Button("Yes", ImVec2(120, 0)))
 			{
 				ImGui::CloseCurrentPopup();
-				fusion.nodes.getInt("edit_advanced") = 0;
-				advanced = false;
+				
 				currentAudioFile = 0;
 				currentKeyzone = 0;
 				int audioFileCount = 0;
@@ -859,7 +877,7 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 					std::vector<std::uint8_t> vec(str.begin(), str.end());
 					map = hmx_fusion_parser::parseData(vec);
 				}
-				else
+				else if(map.children.size()>2)
 					map.children.resize(2);
 
 				std::vector<hmx_fusion_nodes*>nodes;
@@ -880,13 +898,14 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 					c->getInt("max_velocity") = 127;
 					c->getInt("start_offset_frame") = -1;
 					c->getInt("end_offset_frame") = -1;
-					c->getString("sample_path") = "C:/" + celShortName + "_" + std::to_string(idx) + ".mogg";
-					if (!moggFiles.size() == 1) {
+					c->getString("sample_path") = moggFiles[idx]->fileName;
+					if (moggFiles.size() != 1) {
 						idx++;
 					}
 				}
 
-
+				fusion.nodes.getInt("edit_advanced") = 0;
+				advanced = false;
 			}
 			ImGui::SameLine();
 			if (ImGui::Button("No", ImVec2(120, 0)))
@@ -1154,10 +1173,11 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 }
 void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMode, bool advancedMode = false) {
 	ChooseFuserEnum<FuserEnums::Instrument>("Instrument", celData.instrument);
-
+	
 	// Disc Moggs
 
 	auto&& fusionFile = celData.majorAssets[0].data.fusionFile.data;
+	
 	auto&& asset = std::get<HmxAssetFile>(fusionFile.file.e->getData().data.catagoryValues[0].value);
 	//auto &&mogg = asset.audio.audioFiles[0];
 
@@ -1287,7 +1307,7 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 			display_cel_audio_options(celData, asset, moggFiles, fusionFile, fusionPackageFile, duplicate_moggs,false);
 			ImGui::EndChild();
 			ImGui::SameLine();
-			ImGui::BeginChild("Advanced - Disc", ImVec2(windowSize.x / 3, oggWindowSize));
+			ImGui::BeginChild("Advanced - Disc", ImVec2(windowSize.x / 3, oggWindowSize/2));
 			if (ImGui::Button("Export Disc Fusion File")) {
 				auto file = SaveFile("Fusion Text File (.fusion)\0*.fusion\0", "fusion", "");
 				if (file) {
