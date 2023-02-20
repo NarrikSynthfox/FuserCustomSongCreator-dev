@@ -310,6 +310,7 @@ MainContext gCtx;
 
 void load_file(DataBuffer&& dataBuf) {
 	gCtx.has_art = false;
+	gCtx.currentPak.reset();
 	gCtx.currentPak = std::make_unique<MainContext::CurrentPak>();
 	gCtx.saveLocation.clear();
 
@@ -491,6 +492,7 @@ void load_file(DataBuffer&& dataBuf) {
 }
 
 void load_template() {
+	gCtx.currentPak.reset();
 	DataBuffer dataBuf;
 	dataBuf.buffer = (u8*)custom_song_pak_template;
 	dataBuf.size = sizeof(custom_song_pak_template);
@@ -586,7 +588,7 @@ void display_main_properties() {
 }
 //#include "stb_image_write.h"
 
-void update_texture(std::string filepath, AssetLink<IconFileAsset> icon, stbir_filter filter) {
+void update_texture(std::string filepath, AssetLink<IconFileAsset> icon) {
 	rgbcx::init();
 	auto texture = &std::get<Texture2D>(icon.data.file.e->getData().data.catagoryValues[0].value);
 
@@ -596,7 +598,7 @@ void update_texture(std::string filepath, AssetLink<IconFileAsset> icon, stbir_f
 
 
 
-		auto raw_data = gCtx.art.resizeAndGetData(texture->mips[mip_index].width, texture->mips[mip_index].height);
+		uint8_t* raw_data = gCtx.art.resizeAndGetData(texture->mips[mip_index].width, texture->mips[mip_index].height);
 
 		auto width = texture->mips[mip_index].width;
 		auto height = texture->mips[mip_index].height;
@@ -619,6 +621,7 @@ void update_texture(std::string filepath, AssetLink<IconFileAsset> icon, stbir_f
 				}
 				uint8_t* block = &compressedData[(y / 4 * width / 4 + x / 4) * 8];
 				rgbcx::encode_bc1(10,block, inData,true,false);
+				delete[] inData;
 			}
 		}
 
@@ -630,24 +633,14 @@ void update_texture(std::string filepath, AssetLink<IconFileAsset> icon, stbir_f
 		}
 		texture->mips[mip_index].len_1 = len;
 		texture->mips[mip_index].len_2 = len;
-		
-		
+		delete[] compressedData;
+		delete[] raw_data;
 	}
 }
 
 void display_album_art() {
 	auto&& root = gCtx.currentPak->root;
-	static stbir_filter filter = stbir_filter::STBIR_FILTER_DEFAULT;
-	/*const char* options[] = { "Default", "Box", "Triangle","Cubic B-spline", "Cattmull-Rom","Mitchell-Netrevalli" };
-	if (ImGui::BeginCombo("Resize Filter", options[int(filter)])) {
-		for (int i = 0; i < 6; i++) {
-			if (ImGui::Selectable(options[i])) {
-				filter = (stbir_filter)i;
-			}
-		}
-		ImGui::EndCombo();
-	}*/
-
+	
 	ImGui::Text("Album art resizes to 512x512px. Accepted formats: bmp,png,jpg,jpeg");
 	if (ImGui::Button("Import Album Art")) {
 		auto file = OpenFile("Image File\0*.bmp;*.png;*.jpg;*.jpeg\0");
@@ -655,8 +648,8 @@ void display_album_art() {
 			gCtx.art = ImageFile();
 			gCtx.art.FromFile(file.value());
 
-			update_texture(file.value(), root.large_icon_link, filter);
-			update_texture(file.value(), root.small_icon_link, filter);
+			update_texture(file.value(), root.large_icon_link);
+			update_texture(file.value(), root.small_icon_link);
 
 
 			gCtx.has_art = true;
