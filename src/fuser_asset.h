@@ -798,9 +798,13 @@ struct CelData {
 	FileLink<SongTransition> songTransitionFile;
 	std::vector<AssetLink<MidiSongAsset>> majorAssets;
 	std::vector<AssetLink<MidiSongAsset>> minorAssets;
-
+	ArrayProperty* pickupArray;
+	//std::vector<float> pickupsTest;
 	void serialize(SongSerializationCtx &ctx) {
 		if (ctx.loading) {
+			//for (auto v : ctx.getProp<ArrayProperty>("PickupBeats")->values) {
+			//	pickupsTest.emplace_back(std::get<PrimitiveProperty<float>>(v->v).data);
+			//}
 			auto celType = ctx.getProp<EnumProperty>(ctx.curEntry, "CelType");
 			if (celType == nullptr) {
 				type.value = CelType::Type::Beat; //Beat is the first value, and therefore default of the enum, so it isn't serialized in the file.
@@ -844,6 +848,7 @@ struct CelData {
 		songTransitionFile.serialize(ctx);
 
 		if (ctx.loading) {
+			
 			for (auto &&v : ctx.getProp<ArrayProperty>("MajorMidiSongAssets")->values) {
 				AssetLink<MidiSongAsset> midiAsset;
 				midiAsset.ref = std::get<SoftObjectProperty>(v->v).name;
@@ -852,14 +857,21 @@ struct CelData {
 				majorAssets.emplace_back(std::move(midiAsset));
 			}
 
-			//@TODO: Another special case for beats
-				for (auto &&v : ctx.getProp<ArrayProperty>("MinorMidiSongAssets")->values) {
-					AssetLink<MidiSongAsset> midiAsset;
-					midiAsset.ref = std::get<SoftObjectProperty>(v->v).name;
-					midiAsset.data.major = false;
-					midiAsset.serialize(ctx);
-					minorAssets.emplace_back(std::move(midiAsset));
-				}
+			for (auto &&v : ctx.getProp<ArrayProperty>("MinorMidiSongAssets")->values) {
+				AssetLink<MidiSongAsset> midiAsset;
+				midiAsset.ref = std::get<SoftObjectProperty>(v->v).name;
+				midiAsset.data.major = false;
+				midiAsset.serialize(ctx);
+				minorAssets.emplace_back(std::move(midiAsset));
+			}
+
+			pickupArray = ctx.getProp<ArrayProperty>("PickupBeats");
+			if (pickupArray->values.size() == 0) {
+				pickupArray->values.emplace_back(new IPropertyValue);
+				pickupArray->values[0]->v = asset_helper::createPropertyValue("FloatProperty");
+				std::get<PrimitiveProperty<float>>(pickupArray->values[0]->v).data = 0;
+			}
+			
 		}
 
 		if (!ctx.loading) {
@@ -882,8 +894,25 @@ struct CelData {
 			prop.prop->blank = 0;
 			prop.prop->value = ctx.getHeader().findOrCreateName(FuserEnums::FromValue<FuserEnums::KeyMode>(ctx.curKeyMode));
 
-			auto&& pickups = *ctx.getProp<ArrayProperty>("PickupBeats");
-			pickups.values.clear();
+			//auto&& pickups = *ctx.getProp<ArrayProperty>("PickupBeats");
+			//pickups.values.clear();
+			
+
+			////Construct PickupBeats
+			//{
+
+			//	std::vector<IPropertyValue*> pickupData;
+			//	for (auto v : pickupsTest) {
+			//		auto p = new IPropertyValue;
+			//		p.v = asset_helper::createPropertyValue("FloatProperty");
+			//		std::get<PrimitiveProperty<float>>(p.v).data = v;
+			//		
+			//	}
+
+			//	auto&& pickups = *ctx.getProp<ArrayProperty>("PickupBeats");
+			//	
+
+			//}
 
 			//Construct Transpose Table
 			{

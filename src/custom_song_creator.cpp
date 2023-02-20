@@ -10,6 +10,8 @@
 #include <algorithm>
 #include <array>
 #include <unordered_set>
+#include <format>
+
 
 #include <filesystem>
 namespace fs = std::filesystem;
@@ -641,7 +643,7 @@ void update_texture(std::string filepath, AssetLink<IconFileAsset> icon) {
 void display_album_art() {
 	auto&& root = gCtx.currentPak->root;
 	
-	ImGui::Text("Album art resizes to 512x512px. Accepted formats: bmp,png,jpg,jpeg");
+	ImGui::Text("Album art resizes to 512x512px for small and 1080x1080px for large. Accepted formats: bmp,png,jpg,jpeg");
 	if (ImGui::Button("Import Album Art")) {
 		auto file = OpenFile("Image File\0*.bmp;*.png;*.jpg;*.jpeg\0");
 		if (file) {
@@ -1167,7 +1169,7 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMode, bool advancedMode = false) {
 	ChooseFuserEnum<FuserEnums::Instrument>("Instrument", celData.instrument);
 	
-	// Disc Moggs
+	
 
 	auto&& fusionFile = celData.majorAssets[0].data.fusionFile.data;
 	
@@ -1300,7 +1302,7 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 			display_cel_audio_options(celData, asset, moggFiles, fusionFile, fusionPackageFile, duplicate_moggs,false);
 			ImGui::EndChild();
 			ImGui::SameLine();
-			ImGui::BeginChild("Advanced - Disc", ImVec2(windowSize.x / 3, oggWindowSize/2));
+			ImGui::BeginChild("Advanced - Disc", ImVec2(windowSize.x / 3, oggWindowSize));
 			if (ImGui::Button("Export Disc Fusion File")) {
 				auto file = SaveFile("Fusion Text File (.fusion)\0*.fusion\0", "fusion", "");
 				if (file) {
@@ -1398,6 +1400,135 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 					outfile.write((const char*)fileData.data(), fileData.size());
 				}
 			}
+
+			static int curPickup = 0;
+			static float pickupInput;
+			ImGui::BeginChild("PickupTableHolder", ImVec2(windowSize.x/3, ImGui::GetContentRegionAvail().y-50));
+			if (ImGui::BeginTable("PickupTable", 2, 0, ImVec2(windowSize.x / 3, oggWindowSize / 3))) {
+				ImGui::TableSetupColumn("Index", 0, 0.2);
+				ImGui::TableSetupColumn("Pickup Beat");
+				ImGui::TableHeadersRow();
+				
+				for (int i = 0; i < celData.pickupArray->values.size(); i++)
+				{
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn();
+					if (ImGui::Selectable((std::to_string(i)).c_str(), curPickup == i, ImGuiSelectableFlags_SpanAllColumns)) {
+						curPickup = i;
+						pickupInput = std::get<PrimitiveProperty<float>>(celData.pickupArray->values[i]->v).data;
+					}
+					ImGui::TableNextColumn();
+					std::string pickupPos = std::to_string(std::get<PrimitiveProperty<float>>(celData.pickupArray->values[i]->v).data);
+					pickupPos = pickupPos.substr(0, pickupPos.find(".") + 3);
+					ImGui::Text(pickupPos.c_str());
+				}
+				ImGui::EndTable();
+			}
+			
+			if (ImGui::InputFloat("Pickup Beat", &pickupInput, 0.0F, 0.0F, "%.2f")) {
+				pickupInput = std::clamp(pickupInput, 0.0F, 128.0F);
+			}
+			
+			if (ImGui::Button("Add Pickup")) {
+				pickupInput = std::clamp(pickupInput, 0.0F, 128.0F);
+
+				std::vector<float> pickups;
+
+				for (auto puv : celData.pickupArray->values) {
+					pickups.emplace_back(std::get<PrimitiveProperty<float>>(puv->v).data);
+				}
+				
+				auto it = std::find(pickups.begin(), pickups.end(), pickupInput);
+
+				if (it == pickups.end()) {
+					pickups.emplace_back(pickupInput);
+					std::sort(pickups.begin(), pickups.end());
+					auto last = std::unique(pickups.begin(), pickups.end());
+					pickups.erase(last, pickups.end());
+					celData.pickupArray->values.clear();
+					for (int i = 0; i < pickups.size(); i++) {
+						celData.pickupArray->values.emplace_back(new IPropertyValue);
+						celData.pickupArray->values[i]->v= asset_helper::createPropertyValue("FloatProperty");
+						std::get<PrimitiveProperty<float>>(celData.pickupArray->values[i]->v).data = pickups[i];
+					}
+					auto it2 = std::find(pickups.begin(), pickups.end(), pickupInput);
+					if (it2 != pickups.end()) {
+						curPickup = std::distance(pickups.begin(), it2);
+					}
+				}
+
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Update Pickup")) {
+				pickupInput = std::clamp(pickupInput, 0.0F, 128.0F);
+				if (celData.pickupArray->values.size() == 1) {
+					std::get<PrimitiveProperty<float>>(celData.pickupArray->values[curPickup]->v).data = pickupInput;
+				}
+				else {
+					std::vector<float> pickups;
+					for (auto puv : celData.pickupArray->values) {
+						pickups.emplace_back(std::get<PrimitiveProperty<float>>(puv->v).data);
+					}
+
+					auto it = std::find(pickups.begin(), pickups.end(), pickupInput);
+					if (it == pickups.end()) {
+						pickups[curPickup] = pickupInput;
+						std::sort(pickups.begin(), pickups.end());
+						auto last = std::unique(pickups.begin(), pickups.end());
+						pickups.erase(last, pickups.end());
+						celData.pickupArray->values.clear();
+						for (int i = 0; i < pickups.size(); i++) {
+							celData.pickupArray->values.emplace_back(new IPropertyValue);
+							celData.pickupArray->values[i]->v = asset_helper::createPropertyValue("FloatProperty");
+							std::get<PrimitiveProperty<float>>(celData.pickupArray->values[i]->v).data = pickups[i];
+						}
+						auto it2 = std::find(pickups.begin(), pickups.end(), pickupInput);
+						if (it2 != pickups.end()) {
+							curPickup = std::distance(pickups.begin(), it2);
+						}
+					}
+				}
+				
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Remove Pickup") && celData.pickupArray->values.size()>1) {
+				int pickupToErase = curPickup;
+				if (curPickup == celData.pickupArray->values.size() - 1) {
+					curPickup--;
+				}
+				celData.pickupArray->values.erase(celData.pickupArray->values.begin() + pickupToErase);
+				pickupInput = std::get<PrimitiveProperty<float>>(celData.pickupArray->values[curPickup]->v).data;
+			}
+			ImGui::NewLine();
+			ImGui::NewLine();
+			if (ImGui::Button("Reset Pickups")) {
+				ImGui::OpenPopup("Reset Pickups?");
+			}
+
+			if (ImGui::BeginPopupModal("Reset Pickups?", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+			{
+				ImGui::BeginChild("Text", ImVec2(420, 69));
+				ImGui::Text("Are you sure you would like to reset pickups?");
+				ImGui::TextWrapped("WARNING: Will erase all pickups except the first, and set the first one to beat 0");
+				ImGui::EndChild();
+				ImGui::BeginChild("Buttons", ImVec2(420, 25));
+				if (ImGui::Button("Yes", ImVec2(120, 0)))
+				{
+					celData.pickupArray->values.resize(1);
+					std::get<PrimitiveProperty<float>>(celData.pickupArray->values[0]->v).data = 0;
+					ImGui::CloseCurrentPopup();
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("No", ImVec2(120, 0)))
+				{
+					ImGui::CloseCurrentPopup();
+				}
+				ImGui::EndChild();
+			}
+
+			ImGui::EndChild();
+
+			
 			ImGui::EndChild();
 			ImGui::EndTabItem();
 		}
