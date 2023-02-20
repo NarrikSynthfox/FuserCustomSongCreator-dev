@@ -67,17 +67,7 @@ uint8_t* ImageFile::resizeAndGetData(int desired_width, int desired_height) {
 	uint8_t* iCopy = new uint8_t[width * height * channels];
 	memcpy(iCopy, data, width * height * channels);
 	bool ret = stbir_resize_uint8(iCopy, width, height, 0, pCopy, desired_width, desired_height, 0, 4);
-	return pCopy;
-}
-
-uint8_t* ImageFile::resizeAndGetDataWithFilter(int desired_width, int desired_height, stbir_filter filter) {
-	uint8_t* pCopy = new uint8_t[desired_width * desired_height * channels];
-	uint8_t* iCopy = new uint8_t[width * height * channels];
-	memcpy(iCopy, data, width * height * channels);
-	bool ret = stbir__resize_arbitrary(NULL, iCopy, width, height, 0,
-		pCopy, desired_width, desired_height, 0,
-		0, 0, 1, 1, NULL, 4, -1, 0, STBIR_TYPE_UINT8, filter, filter,
-		STBIR_EDGE_CLAMP, STBIR_EDGE_CLAMP, STBIR_COLORSPACE_LINEAR);
+	delete[] iCopy;
 	return pCopy;
 }
 
