@@ -1401,66 +1401,77 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 				}
 			}
 
-			static int curPickup = 0;
+			static int curPickup = -1;
 			static float pickupInput;
 			ImGui::BeginChild("PickupTableHolder", ImVec2(windowSize.x/3, ImGui::GetContentRegionAvail().y-50));
 			if (ImGui::BeginTable("PickupTable", 2, 0, ImVec2(windowSize.x / 3, oggWindowSize / 3))) {
 				ImGui::TableSetupColumn("Index", 0, 0.2);
 				ImGui::TableSetupColumn("Pickup Beat");
 				ImGui::TableHeadersRow();
-				
-				for (int i = 0; i < celData.pickupArray->values.size(); i++)
-				{
-					ImGui::TableNextRow();
-					ImGui::TableNextColumn();
-					if (ImGui::Selectable((std::to_string(i)).c_str(), curPickup == i, ImGuiSelectableFlags_SpanAllColumns)) {
-						curPickup = i;
-						pickupInput = std::get<PrimitiveProperty<float>>(celData.pickupArray->values[i]->v).data;
+				if (celData.pickupArray->values.size() > 0) {
+					for (int i = 0; i < celData.pickupArray->values.size(); i++)
+					{
+						ImGui::TableNextRow();
+						ImGui::TableNextColumn();
+						if (ImGui::Selectable((std::to_string(i)).c_str(), curPickup == i, ImGuiSelectableFlags_SpanAllColumns)) {
+							curPickup = i;
+							pickupInput = std::get<PrimitiveProperty<float>>(celData.pickupArray->values[i]->v).data;
+						}
+						ImGui::TableNextColumn();
+						std::string pickupPos = std::to_string(std::get<PrimitiveProperty<float>>(celData.pickupArray->values[i]->v).data);
+						pickupPos = pickupPos.substr(0, pickupPos.find(".") + 3);
+						ImGui::Text(pickupPos.c_str());
 					}
-					ImGui::TableNextColumn();
-					std::string pickupPos = std::to_string(std::get<PrimitiveProperty<float>>(celData.pickupArray->values[i]->v).data);
-					pickupPos = pickupPos.substr(0, pickupPos.find(".") + 3);
-					ImGui::Text(pickupPos.c_str());
 				}
+				
 				ImGui::EndTable();
 			}
 			
 			if (ImGui::InputFloat("Pickup Beat", &pickupInput, 0.0F, 0.0F, "%.2f")) {
-				pickupInput = std::clamp(pickupInput, 0.0F, 128.0F);
+				pickupInput = std::round(std::clamp(pickupInput, 0.0F, 128.0F)*100)/100;
 			}
 			
 			if (ImGui::Button("Add Pickup")) {
-				pickupInput = std::clamp(pickupInput, 0.0F, 128.0F);
+				pickupInput = std::round(std::clamp(pickupInput, 0.0F, 128.0F) * 100) / 100;
 
-				std::vector<float> pickups;
+				if (celData.pickupArray->values.size() > 0) {
+					std::vector<float> pickups;
 
-				for (auto puv : celData.pickupArray->values) {
-					pickups.emplace_back(std::get<PrimitiveProperty<float>>(puv->v).data);
+					for (auto puv : celData.pickupArray->values) {
+						pickups.emplace_back(std::get<PrimitiveProperty<float>>(puv->v).data);
+					}
+
+					auto it = std::find(pickups.begin(), pickups.end(), pickupInput);
+
+					if (it == pickups.end()) {
+						pickups.emplace_back(pickupInput);
+						std::sort(pickups.begin(), pickups.end());
+						auto last = std::unique(pickups.begin(), pickups.end());
+						pickups.erase(last, pickups.end());
+						celData.pickupArray->values.clear();
+						for (int i = 0; i < pickups.size(); i++) {
+							celData.pickupArray->values.emplace_back(new IPropertyValue);
+							celData.pickupArray->values[i]->v = asset_helper::createPropertyValue("FloatProperty");
+							std::get<PrimitiveProperty<float>>(celData.pickupArray->values[i]->v).data = pickups[i];
+						}
+						auto it2 = std::find(pickups.begin(), pickups.end(), pickupInput);
+						if (it2 != pickups.end()) {
+							curPickup = std::distance(pickups.begin(), it2);
+						}
+					}
+				}
+				else {
+					celData.pickupArray->values.emplace_back(new IPropertyValue);
+					celData.pickupArray->values[0]->v = asset_helper::createPropertyValue("FloatProperty");
+					std::get<PrimitiveProperty<float>>(celData.pickupArray->values[0]->v).data = pickupInput;
+					curPickup = 0;
 				}
 				
-				auto it = std::find(pickups.begin(), pickups.end(), pickupInput);
-
-				if (it == pickups.end()) {
-					pickups.emplace_back(pickupInput);
-					std::sort(pickups.begin(), pickups.end());
-					auto last = std::unique(pickups.begin(), pickups.end());
-					pickups.erase(last, pickups.end());
-					celData.pickupArray->values.clear();
-					for (int i = 0; i < pickups.size(); i++) {
-						celData.pickupArray->values.emplace_back(new IPropertyValue);
-						celData.pickupArray->values[i]->v= asset_helper::createPropertyValue("FloatProperty");
-						std::get<PrimitiveProperty<float>>(celData.pickupArray->values[i]->v).data = pickups[i];
-					}
-					auto it2 = std::find(pickups.begin(), pickups.end(), pickupInput);
-					if (it2 != pickups.end()) {
-						curPickup = std::distance(pickups.begin(), it2);
-					}
-				}
 
 			}
 			ImGui::SameLine();
-			if (ImGui::Button("Update Pickup")) {
-				pickupInput = std::clamp(pickupInput, 0.0F, 128.0F);
+			if (ImGui::Button("Update Pickup") && celData.pickupArray->values.size()>0) {
+				pickupInput = std::round(std::clamp(pickupInput, 0.0F, 128.0F) * 100) / 100;
 				if (celData.pickupArray->values.size() == 1) {
 					std::get<PrimitiveProperty<float>>(celData.pickupArray->values[curPickup]->v).data = pickupInput;
 				}
@@ -1491,31 +1502,34 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 				
 			}
 			ImGui::SameLine();
-			if (ImGui::Button("Remove Pickup") && celData.pickupArray->values.size()>1) {
+			if (ImGui::Button("Remove Pickup") && celData.pickupArray->values.size()>0) {
 				int pickupToErase = curPickup;
 				if (curPickup == celData.pickupArray->values.size() - 1) {
 					curPickup--;
 				}
 				celData.pickupArray->values.erase(celData.pickupArray->values.begin() + pickupToErase);
-				pickupInput = std::get<PrimitiveProperty<float>>(celData.pickupArray->values[curPickup]->v).data;
+				if (celData.pickupArray->values.size() > 0) {
+					pickupInput = std::get<PrimitiveProperty<float>>(celData.pickupArray->values[curPickup]->v).data;
+				}
+				
 			}
 			ImGui::NewLine();
 			ImGui::NewLine();
-			if (ImGui::Button("Reset Pickups")) {
-				ImGui::OpenPopup("Reset Pickups?");
+			if (ImGui::Button("Clear Pickups")) {
+				ImGui::OpenPopup("Clear Pickups?");
 			}
 
-			if (ImGui::BeginPopupModal("Reset Pickups?", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+			if (ImGui::BeginPopupModal("Clear Pickups?", NULL, ImGuiWindowFlags_AlwaysAutoResize))
 			{
 				ImGui::BeginChild("Text", ImVec2(420, 69));
-				ImGui::Text("Are you sure you would like to reset pickups?");
-				ImGui::TextWrapped("WARNING: Will erase all pickups except the first, and set the first one to beat 0");
+				ImGui::Text("Are you sure you would like to clear pickups?");
+				ImGui::TextWrapped("WARNING: Will erase all pickups");
 				ImGui::EndChild();
 				ImGui::BeginChild("Buttons", ImVec2(420, 25));
 				if (ImGui::Button("Yes", ImVec2(120, 0)))
 				{
-					celData.pickupArray->values.resize(1);
-					std::get<PrimitiveProperty<float>>(celData.pickupArray->values[0]->v).data = 0;
+					celData.pickupArray->values.clear();
+					curPickup = -1;
 					ImGui::CloseCurrentPopup();
 				}
 				ImGui::SameLine();
@@ -1524,6 +1538,9 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 					ImGui::CloseCurrentPopup();
 				}
 				ImGui::EndChild();
+
+
+				ImGui::EndPopup();
 			}
 
 			ImGui::EndChild();

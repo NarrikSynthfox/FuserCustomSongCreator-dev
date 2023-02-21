@@ -866,11 +866,6 @@ struct CelData {
 			}
 
 			pickupArray = ctx.getProp<ArrayProperty>("PickupBeats");
-			if (pickupArray->values.size() == 0) {
-				pickupArray->values.emplace_back(new IPropertyValue);
-				pickupArray->values[0]->v = asset_helper::createPropertyValue("FloatProperty");
-				std::get<PrimitiveProperty<float>>(pickupArray->values[0]->v).data = 0;
-			}
 			
 		}
 
