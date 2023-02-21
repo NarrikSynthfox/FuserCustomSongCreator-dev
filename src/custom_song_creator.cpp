@@ -716,6 +716,18 @@ void display_mogg_settings(FusionFileAsset& fusionFile, size_t idx, HmxAudio::Pa
 
 	ErrorModal("Ogg loading error", ("Failed to load ogg file:" + lastMoggError).c_str());
 }
+
+
+int curCelTab = -1;
+int curCelTabOffset = 0;
+int lastCelTab = -1;
+int currentAudioFile = 0;
+int currentKeyzone = 0;
+int selectedAudioFile = 0;
+int curPickup = -1;
+float pickupInput = 0;
+
+
 void display_keyzone_settings(hmx_fusion_nodes* keyzone, std::vector<HmxAudio::PackageFile*> moggFiles) {
 	int itemWidth = 300;
 	ImGui::PushItemWidth(itemWidth);
@@ -739,7 +751,7 @@ void display_keyzone_settings(hmx_fusion_nodes* keyzone, std::vector<HmxAudio::P
 			ts.getInt("maintain_formant") = 0;
 	}
 
-	static int selectedAudioFile = 0;
+
 
 
 	std::vector<std::string> fileNames;
@@ -790,12 +802,23 @@ void display_keyzone_settings(hmx_fusion_nodes* keyzone, std::vector<HmxAudio::P
 	kpshr.root = 60;
 
 
+
 	static int selectedPreset = 0;
+	if (keyzone->getChild("keymap_preset") == nullptr) {
+		hmx_fusion_node kmpreset;
+		kmpreset.key = "keymap_preset";
+		kmpreset.value = 0;
+		keyzone->children.insert(keyzone->children.begin(), kmpreset);
+	}
+	else {
+		selectedPreset = keyzone->getInt("keymap_preset");
+	}
+
 	const char* options[] = { "Major", "Minor","Shared","Custom" };
 	if (ImGui::BeginCombo("Keymap Preset", options[selectedPreset])) {
 		for (int i = 0; i < 4; i++) {
 			if (ImGui::Selectable(options[i])) {
-				selectedPreset = i;
+				keyzone->getInt("keymap_preset") = i;
 				if (i == 0) {
 					keyzone->getInt("min_note") = kpmaj.min;
 					keyzone->getInt("max_note") = kpmaj.max;
@@ -880,8 +903,21 @@ void display_keyzone_settings(hmx_fusion_nodes* keyzone, std::vector<HmxAudio::P
 
 void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vector<HmxAudio::PackageFile*>& moggFiles, FusionFileAsset& fusionFile, HmxAudio::PackageFile* fusionPackageFile, bool duplicate_moggs, bool isRiser = false)
 {
-	static int currentAudioFile = 0;
-	static int currentKeyzone = 0;
+	if (isRiser) 
+		curCelTabOffset = 1;
+	else
+		curCelTabOffset = 0;
+
+
+
+	if (curCelTab+curCelTabOffset != lastCelTab) {
+		currentAudioFile = 0;
+		currentKeyzone = 0;
+		selectedAudioFile = 0;
+		curPickup = -1;
+		pickupInput = 0;
+		lastCelTab = curCelTab + curCelTabOffset;
+	}
 
 	std::string celShortName = celData.shortName + (isRiser ? "_trans" : "");
 	auto aRegion = ImGui::GetContentRegionAvail();
@@ -1239,10 +1275,9 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 		}
 	}
 }
+
 void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMode, bool advancedMode = false) {
 	ChooseFuserEnum<FuserEnums::Instrument>("Instrument", celData.instrument);
-
-
 
 	auto&& fusionFile = celData.majorAssets[0].data.fusionFile.data;
 
@@ -1279,6 +1314,7 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 		else {
 			disc_advanced = fusion.nodes.getInt("edit_advanced") == 1;
 		}
+
 		int mapidx = 0;
 		for (auto c : map.children) {
 			auto nodes = std::get<hmx_fusion_nodes*>(c.value);
@@ -1474,8 +1510,7 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 				}
 			}
 
-			static int curPickup = -1;
-			static float pickupInput;
+			
 			ImGui::BeginChild("PickupTableHolder", ImVec2(windowSize.x / 3, ImGui::GetContentRegionAvail().y - 50));
 			if (ImGui::BeginTable("PickupTable", 2, 0, ImVec2(windowSize.x / 3, oggWindowSize / 3))) {
 				ImGui::TableSetupColumn("Index", 0, 0.2);
@@ -1943,14 +1978,16 @@ void custom_song_creator_update(size_t width, size_t height) {
 				display_album_art();
 				ImGui::EndTabItem();
 			}
-
+			int idx = 0;
 			for (auto&& cel : gCtx.currentPak->root.celData) {
 				std::string tabName = "Song Cell - ";
 				tabName += cel.data.type.getString();
 				if (ImGui::BeginTabItem(tabName.c_str())) {
+					curCelTab = idx;
 					display_cell_data(cel.data, gCtx.currentPak->root.keyMode);
 					ImGui::EndTabItem();
 				}
+				idx+=2;
 			}
 
 			ImGui::EndTabBar();
