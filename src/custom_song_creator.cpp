@@ -803,16 +803,7 @@ void display_keyzone_settings(hmx_fusion_nodes* keyzone, std::vector<HmxAudio::P
 
 
 
-	static int selectedPreset = 0;
-	if (keyzone->getChild("keymap_preset") == nullptr) {
-		hmx_fusion_node kmpreset;
-		kmpreset.key = "keymap_preset";
-		kmpreset.value = 0;
-		keyzone->children.insert(keyzone->children.begin(), kmpreset);
-	}
-	else {
-		selectedPreset = keyzone->getInt("keymap_preset");
-	}
+	int selectedPreset = keyzone->getInt("keymap_preset");
 
 	const char* options[] = { "Major", "Minor","Shared","Custom" };
 	if (ImGui::BeginCombo("Keymap Preset", options[selectedPreset])) {
@@ -1333,6 +1324,50 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 				}
 				nodes->children.insert(nodes->children.begin(), label);
 			}
+			if (nodes->getChild("keymap_preset") == nullptr) {
+				hmx_fusion_node kmpreset;
+				kmpreset.key = "keymap_preset";
+				int nmin = nodes->getInt("min_note");
+				int nmax = nodes->getInt("max_note");
+				int nroot = nodes->getInt("root_note");
+				int mivel = nodes->getInt("min_velocity");
+				int mavel = nodes->getInt("max_velocity");
+				int so = nodes->getInt("start_offset_frame");
+				int eo = nodes->getInt("end_offset_frame");
+				if (mivel != 0 || mavel != 127 || so != -1 || eo != -1)
+					kmpreset.value = 3;
+				else {
+					if (nmin == 0) {
+						if (nroot == 60) {
+							if (nmax == 127)
+								kmpreset.value = 2;
+							else if (nmax == 71)
+								kmpreset.value = 0;
+							else
+								kmpreset.value = 3;
+						}
+						else
+							kmpreset.value = 3;
+					}
+					else if (nmin == 72) {
+						if (nroot == 84) {
+							if (nmax == 127)
+								kmpreset.value = 1;
+							else
+								kmpreset.value = 3;
+						}
+						else
+							kmpreset.value = 3;
+					}
+					else
+						kmpreset.value = 3;
+				}
+				
+
+				
+
+				nodes->children.insert(nodes->children.begin(), kmpreset);
+			}
 			mapidx++;
 		}
 	}
@@ -1391,6 +1426,47 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 					label.value = "UNKNOWN";
 				}
 				nodesRiser->children.insert(nodesRiser->children.begin(), label);
+			}
+			if (nodesRiser->getChild("keymap_preset") == nullptr) {
+				hmx_fusion_node kmpreset;
+				kmpreset.key = "keymap_preset";
+				int nmin = nodesRiser->getInt("min_note");
+				int nmax = nodesRiser->getInt("max_note");
+				int nroot = nodesRiser->getInt("root_note");
+				int mivel = nodesRiser->getInt("min_velocity");
+				int mavel = nodesRiser->getInt("max_velocity");
+				int so = nodesRiser->getInt("start_offset_frame");
+				int eo = nodesRiser->getInt("end_offset_frame");
+				if (mivel != 0 || mavel != 127 || so != -1 || eo != -1)
+					kmpreset.value = 3;
+				else {
+					if (nmin == 0) {
+						if (nroot == 60) {
+							if (nmax == 127)
+								kmpreset.value = 2;
+							else if (nmax == 71)
+								kmpreset.value = 0;
+							else
+								kmpreset.value = 3;
+						}
+						else
+							kmpreset.value = 3;
+					}
+					else if (nmin == 72) {
+						if (nroot == 84) {
+							if (nmax == 127)
+								kmpreset.value = 1;
+							else
+								kmpreset.value = 3;
+						}
+						else
+							kmpreset.value = 3;
+					}
+					else
+						kmpreset.value = 3;
+				}
+				
+				nodesRiser->children.insert(nodesRiser->children.begin(), kmpreset);
 			}
 			mapidx++;
 		}
