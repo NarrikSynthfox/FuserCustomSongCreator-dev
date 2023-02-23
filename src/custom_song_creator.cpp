@@ -33,9 +33,6 @@ namespace fs = std::filesystem;
 extern HWND G_hwnd;
 
 
-
-
-
 struct AudioCtx {
 	HSAMPLE currentMusic = 0;
 	int currentDevice = -1;
@@ -597,7 +594,7 @@ void update_texture(std::string filepath, AssetLink<IconFileAsset> icon) {
 	for (int mip_index = 0; mip_index < texture->mips.size(); mip_index++) {
 		texture->mips[mip_index].width = (texture->mips[mip_index].width + 3) & ~3;
 		texture->mips[mip_index].height = (texture->mips[mip_index].height + 3) & ~3;
-
+ 
 
 
 		uint8_t* raw_data = gCtx.art.resizeAndGetData(texture->mips[mip_index].width, texture->mips[mip_index].height);
@@ -1479,14 +1476,14 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 
 	auto windowSize = ImGui::GetWindowSize();
 
-	auto oggWindowSize = ImGui::GetContentRegionAvail().y - 25;
+	auto oggWindowSize = ImGui::GetContentRegionAvail().y - 23;
 	if (ImGui::BeginTabBar("CelDataEditTabs")) {
 		if (ImGui::BeginTabItem("Disc Audio")) {
-
 			ImGui::BeginChild("AudioSettingsDisc", ImVec2((windowSize.x / 3) * 2, oggWindowSize));
 			display_cel_audio_options(celData, asset, moggFiles, fusionFile, fusionPackageFile, duplicate_moggs, false);
 			ImGui::EndChild();
 			ImGui::SameLine();
+			ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.2, 0.2, 0.2, 1));
 			ImGui::BeginChild("Advanced - Disc", ImVec2(windowSize.x / 3, oggWindowSize));
 			if (ImGui::Button("Export Disc Fusion File")) {
 				auto file = SaveFile("Fusion Text File (.fusion)\0*.fusion\0", "fusion", "");
@@ -1586,9 +1583,9 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 				}
 			}
 
-			
-			ImGui::BeginChild("PickupTableHolder", ImVec2(windowSize.x / 3, ImGui::GetContentRegionAvail().y - 50));
-			if (ImGui::BeginTable("PickupTable", 2, 0, ImVec2(windowSize.x / 3, oggWindowSize / 3))) {
+			auto pickupTableSize = ImGui::GetContentRegionAvail().y;
+			ImGui::BeginChild("PickupTableHolder", ImVec2((windowSize.x / 3) - 15, ImGui::GetContentRegionAvail().y - 150));
+			if (ImGui::BeginTable("PickupTable", 2, 0, ImVec2((windowSize.x / 3)-15, ImGui::GetContentRegionAvail().y - 150))) {
 				ImGui::TableSetupColumn("Index", 0, 0.2);
 				ImGui::TableSetupColumn("Pickup Beat");
 				ImGui::TableHeadersRow();
@@ -1610,11 +1607,11 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 
 				ImGui::EndTable();
 			}
-
+			ImGui::EndChild();
+			ImGui::BeginChild("PickupButtons", ImVec2(windowSize.x / 3, 145));
 			if (ImGui::InputFloat("Pickup Beat", &pickupInput, 0.0F, 0.0F, "%.2f")) {
 				pickupInput = std::round(std::clamp(pickupInput, 0.0F, 128.0F) * 100) / 100;
 			}
-
 			if (ImGui::Button("Add Pickup")) {
 				pickupInput = std::round(std::clamp(pickupInput, 0.0F, 128.0F) * 100) / 100;
 
@@ -1702,7 +1699,8 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 			if (ImGui::Button("Clear Pickups")) {
 				ImGui::OpenPopup("Clear Pickups?");
 			}
-
+			
+			ImGui::PopStyleColor();
 			if (ImGui::BeginPopupModal("Clear Pickups?", NULL, ImGuiWindowFlags_AlwaysAutoResize))
 			{
 				ImGui::BeginChild("Text", ImVec2(420, 69));
@@ -1738,6 +1736,7 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 			display_cel_audio_options(celData, assetRiser, moggFilesRiser, fusionFileRiser, fusionPackageFileRiser, duplicate_moggsRiser, true);
 			ImGui::EndChild();
 			ImGui::SameLine();
+			ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.2, 0.2, 0.2, 1));
 			ImGui::BeginChild("Advanced - Riser", ImVec2(windowSize.x / 3, oggWindowSize));
 			if (ImGui::Button("Export Riser Fusion File")) {
 				auto file = SaveFile("Fusion Text File (.fusion)\0*.fusion\0", "fusion", "");
@@ -1837,6 +1836,7 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 					outfile.write((const char*)fileDataRiser.data(), fileDataRiser.size());
 				}
 			}
+			ImGui::PopStyleColor();
 			ImGui::EndChild();
 			ImGui::EndTabItem();
 		}
