@@ -1264,7 +1264,7 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 	}
 }
 
-void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMode, bool advancedMode = false) {
+void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMode) {
 	ChooseFuserEnum<FuserEnums::Instrument>("Instrument", celData.instrument);
 
 	auto&& fusionFile = celData.majorAssets[0].data.fusionFile.data;
