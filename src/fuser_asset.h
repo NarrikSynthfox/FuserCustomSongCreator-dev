@@ -576,9 +576,7 @@ struct FusionFileAsset {
 				size_t found2 = f->fileName.rfind(".mogg");
 				std::string key = f->fileName.substr(found1, found2 - found1);
 				f->fileName = "C:/" + ctx.subCelName() + key + ".mogg";
-				auto &&moggHeader = std::get<HmxAudio::PackageFile::MoggSampleResourceHeader>(f->resourceHeader);
-				moggHeader.numberOfSamples = (moggHeader.sample_rate * 60 * 4 * 32) / ctx.bpm;
-				
+				auto &&moggHeader = std::get<HmxAudio::PackageFile::MoggSampleResourceHeader>(f->resourceHeader);			
 			}
 
 			fusionFile->fileName = Game_Prefix + file.path + ".fusion";

@@ -671,6 +671,8 @@ void display_mogg_settings(FusionFileAsset& fusionFile, size_t idx, HmxAudio::Pa
 	if (fusionFile.playableMoggs.size() <= idx) {
 		fusionFile.playableMoggs.resize(idx + 1);
 	}
+
+	ImGui::Text(std::to_string(header.numberOfSamples).c_str());
 	if (ImGui::Button(buttonText.c_str())) {
 		auto moggFile = OpenFile("Ogg file (*.ogg)\0*.ogg\0");
 		if (moggFile) {
@@ -690,6 +692,7 @@ void display_mogg_settings(FusionFileAsset& fusionFile, size_t idx, HmxAudio::Pa
 				} while (read != 0);
 
 				header.sample_rate = ve.sample_rate;
+				header.numberOfSamples = ve.numSamples;
 			}
 			catch (std::exception& e) {
 				lastMoggError = e.what();
@@ -737,6 +740,16 @@ void display_keyzone_settings(hmx_fusion_nodes* keyzone, std::vector<HmxAudio::P
 		else
 			keyzone->getInt("unpitched") = 0;
 	}
+
+	bool sng = keyzone->getInt("singleton") == 1;
+	bool sng_changed = ImGui::Checkbox("Singleton", &sng);
+	if (sng_changed) {
+		if (sng)
+			keyzone->getInt("singleton") = 1;
+		else
+			keyzone->getInt("singleton") = 0;
+	}
+
 	auto&& ts = keyzone->getNode("timestretch_settings");
 
 	bool natp = ts.getInt("maintain_formant") == 1;
@@ -1257,6 +1270,19 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 			else {
 				nodes[0]->getInt("unpitched") = 0;
 				nodes[1]->getInt("unpitched") = 0;
+			}
+		}
+
+		bool sng = nodes[0]->getInt("singleton") == 1;
+		bool sng_changed = ImGui::Checkbox("Singleton", &sng);
+		if (sng_changed) {
+			if (sng) {
+				nodes[0]->getInt("singleton") = 1;
+				nodes[1]->getInt("singleton") = 1;
+			}
+			else {
+				nodes[0]->getInt("singleton") = 0;
+				nodes[1]->getInt("singleton") = 0;
 			}
 		}
 		auto&& ts = nodes[0]->getNode("timestretch_settings");
