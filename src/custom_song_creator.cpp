@@ -91,7 +91,7 @@ void display_playable_audio(PlayableAudio& audio, std::string addString) {
 
 	auto active = BASS_ChannelIsActive(audio.channelHandle);
 	if (active != BASS_ACTIVE_PLAYING) {
-		std::string buttonText = "Play " + addString + " Audio";
+		std::string buttonText = "Play Audio##"+addString;
 		if (addString == "") {
 			buttonText = "Play Audio";
 		}
@@ -113,11 +113,11 @@ void display_playable_audio(PlayableAudio& audio, std::string addString) {
 		}
 	}
 	else {
-		std::string buttonText = "Stop Playing " + addString + " Audio";
+		std::string buttonTextStop = "Stop##" + addString;
 		if (addString == "") {
-			buttonText = "Stop Playing Audio";
+			buttonTextStop = "Stop";
 		}
-		if (ImGui::Button("Stop")) {
+		if (ImGui::Button(buttonTextStop.c_str())) {
 			BASS_ChannelStop(audio.channelHandle);
 		}
 	}
@@ -664,7 +664,7 @@ std::string lastMoggError;
 void display_mogg_settings(FusionFileAsset& fusionFile, size_t idx, HmxAudio::PackageFile& mogg, std::string addString) {
 
 	auto&& header = std::get<HmxAudio::PackageFile::MoggSampleResourceHeader>(mogg.resourceHeader);
-	std::string buttonText = "Replace " + addString + " Audio";
+	std::string buttonText = "Replace Audio##"+addString;
 	if (addString == "") {
 		buttonText = "Replace Audio";
 	}
