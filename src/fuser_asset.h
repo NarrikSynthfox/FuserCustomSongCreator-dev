@@ -73,7 +73,8 @@ struct FuserEnums {
 				"EKey::Ab",
 				"EKey::A",
 				"EKey::Bb",
-				"EKey::B"
+				"EKey::B",
+				"EKey::Num"
 			};
 			return values;
 		}
@@ -82,13 +83,15 @@ struct FuserEnums {
 	struct KeyMode {
 		enum class Value {
 			Major,
-			Minor
+			Minor,
+			Num
 		};
 
 		static const std::vector<std::string>& GetValues() {
 			static std::vector<std::string> values = {
 				"EKeyMode::Major",
-				"EKeyMode::Minor"
+				"EKeyMode::Minor",
+				"EKeyMode::Num"
 			};
 			return values;
 		}
@@ -656,6 +659,8 @@ struct SongTransition {
 	std::vector<AssetLink<MidiSongAsset>> majorAssets;
 	std::vector<AssetLink<MidiSongAsset>> minorAssets;
 
+	bool allUnpitched = false;
+
 	void serialize(SongSerializationCtx &ctx) {
 		ctx.isTransition = true;
 
@@ -691,17 +696,26 @@ struct SongTransition {
 			bpm = std::clamp(bpm, 90, 157);
 			ctx.serializePrimitive("BPM", bpm);
 
-			//Beats don't have a key, so they always serialize as EKey::Num
-			ctx.serializeEnum("Key", ctx.songKey);
+			if (!allUnpitched) {
+				ctx.serializeEnum("Key", ctx.songKey);
+			}
+			else {
+				ctx.serializeEnum("Key", std::string("EKey::Num"));
+			}
 			auto prop = ctx.getOrCreateProp<EnumProperty>("Mode");
 			prop.propData->typeRef = ctx.getHeader().findOrCreateName("EnumProperty");
 			prop.propData->length = 8;
 			prop.prop->enumType = ctx.getHeader().findOrCreateName("EKeyMode");
 			prop.prop->blank = 0;
-			prop.prop->value = ctx.getHeader().findOrCreateName(FuserEnums::FromValue<FuserEnums::KeyMode>(ctx.curKeyMode));
-
+			if (!allUnpitched) {
+				prop.prop->value = ctx.getHeader().findOrCreateName(FuserEnums::FromValue<FuserEnums::KeyMode>(ctx.curKeyMode));
+			}
+			else {
+				prop.prop->value = ctx.getHeader().findOrCreateName(FuserEnums::FromValue<FuserEnums::KeyMode>(FuserEnums::KeyMode::Value::Num));
+			}
+			
 			//Construct Transpose Table
-			{
+			if (!allUnpitched){
 				struct Transpose {
 					PropertyData* data;
 				};
@@ -799,6 +813,9 @@ struct CelData {
 	std::vector<AssetLink<MidiSongAsset>> majorAssets;
 	std::vector<AssetLink<MidiSongAsset>> minorAssets;
 	ArrayProperty* pickupArray;
+
+	bool allUnpitched = false;
+
 	//std::vector<float> pickupsTest;
 	void serialize(SongSerializationCtx &ctx) {
 		if (ctx.loading) {
@@ -879,38 +896,26 @@ struct CelData {
 			ctx.serializePrimitive("BPM", bpm);
 
 			
-			ctx.serializeEnum("Key", ctx.songKey);
-
+			if (!allUnpitched) {
+				ctx.serializeEnum("Key", ctx.songKey);
+			}
+			else {
+				ctx.serializeEnum("Key", std::string("EKey::Num"));
+			}
 			
 			auto prop = ctx.getOrCreateProp<EnumProperty>("Mode");
 			prop.propData->typeRef = ctx.getHeader().findOrCreateName("EnumProperty");
 			prop.propData->length = 8;
 			prop.prop->enumType = ctx.getHeader().findOrCreateName("EKeyMode");
 			prop.prop->blank = 0;
-			prop.prop->value = ctx.getHeader().findOrCreateName(FuserEnums::FromValue<FuserEnums::KeyMode>(ctx.curKeyMode));
-
-			//auto&& pickups = *ctx.getProp<ArrayProperty>("PickupBeats");
-			//pickups.values.clear();
+			if (!allUnpitched) {
+				prop.prop->value = ctx.getHeader().findOrCreateName(FuserEnums::FromValue<FuserEnums::KeyMode>(ctx.curKeyMode));
+			}
+			else {
+				prop.prop->value = ctx.getHeader().findOrCreateName(FuserEnums::FromValue<FuserEnums::KeyMode>(FuserEnums::KeyMode::Value::Num));
+			}
 			
-
-			////Construct PickupBeats
-			//{
-
-			//	std::vector<IPropertyValue*> pickupData;
-			//	for (auto v : pickupsTest) {
-			//		auto p = new IPropertyValue;
-			//		p.v = asset_helper::createPropertyValue("FloatProperty");
-			//		std::get<PrimitiveProperty<float>>(p.v).data = v;
-			//		
-			//	}
-
-			//	auto&& pickups = *ctx.getProp<ArrayProperty>("PickupBeats");
-			//	
-
-			//}
-
-			//Construct Transpose Table
-			{
+			if (!allUnpitched) {
 				struct Transpose {
 					PropertyData *data;
 				};

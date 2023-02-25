@@ -912,7 +912,20 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 
 	auto&& fusion = std::get<HmxAudio::PackageFile::FusionFileResource>(fusionPackageFile->resourceHeader);
 	auto& map = fusion.nodes.getNode("keymap");
-
+	bool allUnpitched = true;
+	for (auto& c : map.children) {
+		auto nodes = std::get<hmx_fusion_nodes*>(c.value);
+		if (nodes->getInt("unpitched") == 0) {
+			allUnpitched = false;
+		}
+	}
+	if (isRiser) {
+		celData.songTransitionFile.data.allUnpitched = allUnpitched;
+	}
+	else {
+		celData.allUnpitched = allUnpitched;
+	}
+	
 	bool advanced = fusion.nodes.getInt("edit_advanced") == 1;
 	std::string advBtn = "Switch to Advanced Mode";
 	if (advanced)
