@@ -204,9 +204,12 @@ static void HelpMarker(const char* desc)
 }
 
 template<typename T>
-static void ChooseFuserEnum(const char* label, std::string& out) {
+static void ChooseFuserEnum(const char* label, std::string& out,bool hideLast=true) {
 	auto values = T::GetValues();
 
+	int itemsCount = values.size();
+	if (hideLast)
+		itemsCount--;
 	auto getter = [](void* data, int idx, const char** out_str) {
 		auto&& d = reinterpret_cast<std::vector<std::string>*>(data);
 		*out_str = (*d)[idx].c_str();
@@ -214,22 +217,24 @@ static void ChooseFuserEnum(const char* label, std::string& out) {
 	};
 
 	int currentChoice = 0;
-	for (size_t i = 0; i < values.size(); ++i) {
+	for (size_t i = 0; i < itemsCount; ++i) {
 		if (values[i] == out) {
 			currentChoice = i;
 			break;
 		}
 	}
 
-	if (ImGui::Combo(label, &currentChoice, getter, &values, values.size())) {
+	if (ImGui::Combo(label, &currentChoice, getter, &values, itemsCount)) {
 		out = values[currentChoice];
 	}
 }
 
 template<typename T>
-static void ChooseFuserEnum(const char* label, typename T::Value& out) {
+static void ChooseFuserEnum(const char* label, typename T::Value& out, bool hideLast = true) {
 	auto values = T::GetValues();
-
+	int itemCount = values.size();
+	if (hideLast)
+		itemCount--;
 	auto getter = [](void* data, int idx, const char** out_str) {
 		auto&& d = reinterpret_cast<std::vector<std::string>*>(data);
 		*out_str = (*d)[idx].c_str();
@@ -237,7 +242,7 @@ static void ChooseFuserEnum(const char* label, typename T::Value& out) {
 	};
 
 	int currentChoice = static_cast<int>(out);
-	if (ImGui::Combo(label, &currentChoice, getter, &values, values.size())) {
+	if (ImGui::Combo(label, &currentChoice, getter, &values, itemCount)) {
 		out = static_cast<typename T::Value>(currentChoice);
 	}
 }
@@ -502,7 +507,9 @@ void save_file() {
 	SongSerializationCtx ctx;
 	ctx.loading = false;
 	ctx.pak = &gCtx.currentPak->pak;
+	
 	gCtx.currentPak->root.serialize(ctx);
+
 
 	std::vector<u8> outData;
 	DataBuffer outBuf;
@@ -582,7 +589,7 @@ void display_main_properties() {
 	ImGui::InputScalar("BPM", ImGuiDataType_S32, &root.bpm);
 	ChooseFuserEnum<FuserEnums::Key>("Key", root.songKey);
 	ChooseFuserEnum<FuserEnums::KeyMode>("Mode", root.keyMode);
-	ChooseFuserEnum<FuserEnums::Genre>("Genre", root.genre);
+	ChooseFuserEnum<FuserEnums::Genre>("Genre", root.genre,false);
 	ImGui::InputScalar("Year", ImGuiDataType_S32, &root.year);
 }
 //#include "stb_image_write.h"
@@ -672,7 +679,6 @@ void display_mogg_settings(FusionFileAsset& fusionFile, size_t idx, HmxAudio::Pa
 		fusionFile.playableMoggs.resize(idx + 1);
 	}
 
-	ImGui::Text(std::to_string(header.numberOfSamples).c_str());
 	if (ImGui::Button(buttonText.c_str())) {
 		auto moggFile = OpenFile("Ogg file (*.ogg)\0*.ogg\0");
 		if (moggFile) {
@@ -741,14 +747,6 @@ void display_keyzone_settings(hmx_fusion_nodes* keyzone, std::vector<HmxAudio::P
 			keyzone->getInt("unpitched") = 0;
 	}
 
-	bool sng = keyzone->getInt("singleton") == 1;
-	bool sng_changed = ImGui::Checkbox("Singleton", &sng);
-	if (sng_changed) {
-		if (sng)
-			keyzone->getInt("singleton") = 1;
-		else
-			keyzone->getInt("singleton") = 0;
-	}
 
 	auto&& ts = keyzone->getNode("timestretch_settings");
 
@@ -847,9 +845,46 @@ void display_keyzone_settings(hmx_fusion_nodes* keyzone, std::vector<HmxAudio::P
 	}
 
 	if (ImGui::CollapsingHeader("Advanced Keymap Settings")) {
+
+		bool sng = keyzone->getInt("singleton") == 1;
+		bool sng_changed = ImGui::Checkbox("Singleton", &sng);
+		if (sng_changed) {
+			if (sng)
+				keyzone->getInt("singleton") = 1;
+			else
+				keyzone->getInt("singleton") = 0;
+		}
+		ImGui::SameLine();
+		HelpMarker("If checked, the specified keyzone can only be triggered if it currently is not playing.");
+		ImGui::SameLine();
+		bool mt = ts.getInt("maintain_time") == 1;
+		bool mt_changed = ImGui::Checkbox("Maintain Time", &mt);
+		if (mt_changed) {
+			if (mt)
+				ts.getInt("maintain_time") = 1;
+			else
+				ts.getInt("maintain_time") = 0;
+		}
+		ImGui::SameLine();
+		HelpMarker("Ensures that the timing of the audio does not change when the midi note played is not the root note.");
+		ImGui::SameLine();
+		bool st = ts.getInt("sync_tempo") == 1;
+		bool st_changed = ImGui::Checkbox("Sync Tempo", &st);
+		if (st_changed) {
+			if (st)
+				ts.getInt("sync_tempo") = 1;
+			else
+				ts.getInt("sync_tempo") = 0;
+		}
+		ImGui::SameLine();
+		HelpMarker("Slows down or speeds up the audio with the tempo.");
+		
+		ImGui::TextWrapped("For audio to sync properly if it's meant to sync to the tempo and play on multiple notes, both Maintain Time and Sync Tempo have to be enabled.");
+
 		ImGui::PushItemWidth(itemWidth);
 		if (ImGui::InputScalar("Map - Min Note", ImGuiDataType_U32, &keyzone->getInt("min_note"))) {
 			selectedPreset = 3;
+			keyzone->getInt("keymap_preset") = 3;
 			keyzone->getInt("min_note") = std::clamp(keyzone->getInt("min_note"), 0, 127);
 		}
 
@@ -858,6 +893,7 @@ void display_keyzone_settings(hmx_fusion_nodes* keyzone, std::vector<HmxAudio::P
 
 		if (ImGui::InputScalar("Map - Highest Note", ImGuiDataType_U32, &keyzone->getInt("max_note"))) {
 			selectedPreset = 3;
+			keyzone->getInt("keymap_preset") = 3;
 			keyzone->getInt("max_note") = std::clamp(keyzone->getInt("max_note"), 0, 127);
 		}
 		ImGui::SameLine();
@@ -865,6 +901,7 @@ void display_keyzone_settings(hmx_fusion_nodes* keyzone, std::vector<HmxAudio::P
 
 		if (ImGui::InputScalar("Map - Root Note", ImGuiDataType_U32, &keyzone->getInt("root_note"))) {
 			selectedPreset = 3;
+			keyzone->getInt("keymap_preset") = 3;
 			keyzone->getInt("root_note") = std::clamp(keyzone->getInt("root_note"), 0, 127);
 		}
 		ImGui::SameLine();
@@ -872,6 +909,7 @@ void display_keyzone_settings(hmx_fusion_nodes* keyzone, std::vector<HmxAudio::P
 
 		if (ImGui::InputScalar("Map - Min Velocity", ImGuiDataType_U32, &keyzone->getInt("min_velocity"))) {
 			selectedPreset = 3;
+			keyzone->getInt("keymap_preset") = 3;
 			keyzone->getInt("min_velocity") = std::clamp(keyzone->getInt("min_velocity"), 0, 127);
 		}
 		ImGui::SameLine();
@@ -879,6 +917,7 @@ void display_keyzone_settings(hmx_fusion_nodes* keyzone, std::vector<HmxAudio::P
 
 		if (ImGui::InputScalar("Map - Max Velocity", ImGuiDataType_U32, &keyzone->getInt("max_velocity"))) {
 			selectedPreset = 3;
+			keyzone->getInt("keymap_preset") = 3;
 			keyzone->getInt("max_velocity") = std::clamp(keyzone->getInt("max_velocity"), 0, 127);
 		}
 		ImGui::SameLine();
@@ -886,6 +925,7 @@ void display_keyzone_settings(hmx_fusion_nodes* keyzone, std::vector<HmxAudio::P
 
 		if (ImGui::InputScalar("Audio - Start Offset", ImGuiDataType_S32, &keyzone->getInt("start_offset_frame"))) {
 			selectedPreset = 3;
+			keyzone->getInt("keymap_preset") = 3;
 			keyzone->getInt("start_offset_frame") = std::clamp(keyzone->getInt("start_offset_frame"), -1, INT_MAX);
 		}
 		ImGui::SameLine();
@@ -893,6 +933,7 @@ void display_keyzone_settings(hmx_fusion_nodes* keyzone, std::vector<HmxAudio::P
 
 		if (ImGui::InputScalar("Audio - End Offset", ImGuiDataType_S32, &keyzone->getInt("end_offset_frame"))) {
 			selectedPreset = 3;
+			keyzone->getInt("keymap_preset") = 3;
 			keyzone->getInt("end_offset_frame") = std::clamp(keyzone->getInt("end_offset_frame"), -1, INT_MAX);
 		}
 		ImGui::SameLine();
@@ -925,19 +966,6 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 
 	auto&& fusion = std::get<HmxAudio::PackageFile::FusionFileResource>(fusionPackageFile->resourceHeader);
 	auto& map = fusion.nodes.getNode("keymap");
-	bool allUnpitched = true;
-	for (auto& c : map.children) {
-		auto nodes = std::get<hmx_fusion_nodes*>(c.value);
-		if (nodes->getInt("unpitched") == 0) {
-			allUnpitched = false;
-		}
-	}
-	if (isRiser) {
-		celData.songTransitionFile.data.allUnpitched = allUnpitched;
-	}
-	else {
-		celData.allUnpitched = allUnpitched;
-	}
 	
 	bool advanced = fusion.nodes.getInt("edit_advanced") == 1;
 	std::string advBtn = "Switch to Advanced Mode";
@@ -980,15 +1008,6 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 						++it;
 					}
 				}
-				moggFiles.clear();
-				for (auto&& file : asset.audio.audioFiles) {
-					if (file.fileType == "FusionPatchResource") {
-						fusionPackageFile = &file;
-					}
-					else if (file.fileType == "MoggSampleResource") {
-						moggFiles.emplace_back(&file);
-					}
-				}
 				if (map.children.size() == 1) {
 					map.children.emplace_back(map.children[0]);
 					std::string str = hmx_fusion_parser::outputData(map);
@@ -998,9 +1017,22 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 				else if (map.children.size() > 2)
 					map.children.resize(2);
 
+				moggFiles.clear();
+				fusionFile.playableMoggs.resize(audioFileCount);
+				for (auto&& file : asset.audio.audioFiles) {
+					if (file.fileType == "FusionPatchResource") {
+						fusionPackageFile = &file;
+					}
+					else if (file.fileType == "MoggSampleResource") {
+						moggFiles.emplace_back(&file);
+					}
+				}
+				
+				
 				std::vector<hmx_fusion_nodes*>nodes;
 				nodes.emplace_back(std::get<hmx_fusion_nodes*>(map.children[0].value));
 				nodes.emplace_back(std::get<hmx_fusion_nodes*>(map.children[1].value));
+
 
 				nodes[0]->getString("zone_label") = "Major";
 				nodes[0]->getInt("min_note") = 0;
@@ -1021,6 +1053,14 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 						idx++;
 					}
 				}
+
+				auto&& ts = nodes[0]->getNode("timestretch_settings");
+				auto&& ts2 = nodes[1]->getNode("timestretch_settings");
+
+				ts.getInt("maintain_time") = 1;
+				ts2.getInt("maintain_time") = 1;
+				ts.getInt("sync_tempo") = 1;
+				ts2.getInt("sync_tempo") = 1;
 
 				fusion.nodes.getInt("edit_advanced") = 0;
 				advanced = false;
@@ -1056,11 +1096,15 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 		ImGui::EndPopup();
 	}
 
+	
+
+
 	if (advanced) {
 		ImGui::BeginChild("Audio", ImVec2(aRegion.x, aRegion.y / 3));
 		if (currentAudioFile >= moggFiles.size())
 			currentAudioFile = 0;
-		ImGui::BeginChild("AudioTableHolder", ImVec2(aRegion.x / 3, (aRegion.y / 3)));
+		ImGui::BeginChild("AudioTableWithButtons", ImVec2(aRegion.x / 3, (aRegion.y / 3)));
+		ImGui::BeginChild("AudioTableHolder", ImVec2(aRegion.x / 3, (aRegion.y / 3) - 50));
 		if (ImGui::BeginTable("AudioTable", 2, 0, ImVec2(aRegion.x / 3, (aRegion.y / 3) - 50))) {
 			ImGui::TableSetupColumn("Index", 0, 0.2);
 			ImGui::TableSetupColumn("Audio File");
@@ -1077,6 +1121,7 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 			}
 			ImGui::EndTable();
 		}
+		ImGui::EndChild();
 		if (ImGui::Button("Add Audio File")) {
 			HmxAudio::PackageFile newFile = *moggFiles[0];
 			int i = 0;
@@ -1093,10 +1138,8 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 			}
 
 			newFile.fileName = "C:/" + celShortName + "_" + std::to_string(i) + ".mogg";
-
 			asset.audio.audioFiles.insert(asset.audio.audioFiles.begin() + i, newFile);
 			moggFiles.clear();
-			int idx = 0;
 			for (auto&& file : asset.audio.audioFiles) {
 				if (file.fileType == "FusionPatchResource") {
 					fusionPackageFile = &file;
@@ -1105,6 +1148,7 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 					moggFiles.emplace_back(&file);
 				}
 			}
+			currentAudioFile = i;
 
 		}
 		ImGui::SameLine();
@@ -1119,6 +1163,8 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 				}
 			);
 			asset.audio.audioFiles.erase(it);
+			int audioIndex = std::distance(asset.audio.audioFiles.begin(), it);
+			fusionFile.playableMoggs.erase(fusionFile.playableMoggs.begin() + audioIndex);
 			moggFiles.clear();
 			for (auto&& file : asset.audio.audioFiles) {
 				if (file.fileType == "FusionPatchResource") {
@@ -1128,6 +1174,26 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 					moggFiles.emplace_back(&file);
 				}
 			}
+			int i = 0;
+			std::vector<std::string> fileNames;
+			for (auto& mogg : moggFiles) {
+				fileNames.emplace_back(mogg->fileName);
+				mogg->fileName = "C:/" + celShortName + "_" + std::to_string(i) + ".mogg";
+				i++;
+			}
+			for (auto c : map.children) {
+				auto&& nodes = std::get<hmx_fusion_nodes*>(c.value);
+				for (int j = 0; j < fileNames.size(); j++)
+				{
+					if (nodes->getString("sample_path") == fileNames[j]) {
+						nodes->getString("sample_path") = moggFiles[j]->fileName;
+					}
+					else {
+						nodes->getString("sample_path") = moggFiles[0]->fileName;
+					}
+				}
+			}
+
 		}
 		ImGui::EndChild();
 		ImGui::SameLine();
@@ -1139,13 +1205,14 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 
 		ImGui::EndChild();
 
-		ImGui::BeginChild("Keymap", ImVec2(aRegion.x, (aRegion.y / 2)));
+		ImGui::BeginChild("Keymap", ImVec2(aRegion.x, (aRegion.y / 2)+70));
 
 
 
 		if (currentKeyzone >= map.children.size())
 			currentKeyzone = 0;
-		ImGui::BeginChild("KeyzoneTableHolder", ImVec2(aRegion.x / 3, (aRegion.y / 2)));
+		ImGui::BeginChild("KeyzoneTableAndButtons", ImVec2(aRegion.x / 3, (aRegion.y / 2)));
+		ImGui::BeginChild("KeyzoneTableHolder", ImVec2(aRegion.x / 3, (aRegion.y / 2)-50));
 		if (ImGui::BeginTable("KeyzoneTable", 2, 0, ImVec2(aRegion.x / 3, (aRegion.y / 2) - 50))) {
 			ImGui::TableSetupColumn("Index", 0, 0.2);
 			ImGui::TableSetupColumn("Keyzone Label");
@@ -1163,12 +1230,16 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 			ImGui::EndTable();
 		}
 
+		
+
+		ImGui::EndChild();
 		if (ImGui::Button("Add Keyzone")) {
-			map.children.emplace_back(map.children[0]);
+			map.children.emplace_back(map.children[currentKeyzone]);
 			std::string str = hmx_fusion_parser::outputData(map);
 			std::vector<std::uint8_t> vec(str.begin(), str.end());
 			map = hmx_fusion_parser::parseData(vec);
 			std::get<hmx_fusion_nodes*>(map.children[map.children.size() - 1].value)->getString("zone_label") = "New Zone";
+			currentKeyzone = map.children.size() - 1;
 		}
 		ImGui::SameLine();
 		if (ImGui::Button("Remove Keyzone") && map.children.size() != 1) {
@@ -1177,11 +1248,10 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 				currentKeyzone--;
 			map.children.erase(map.children.begin() + mapToErase);
 		}
-
 		ImGui::EndChild();
 		ImGui::SameLine();
 
-		ImGui::BeginChild("KeymapSettings", ImVec2((aRegion.x / 3) * 2, (aRegion.y / 2)));
+		ImGui::BeginChild("KeymapSettings", ImVec2((aRegion.x / 3) * 2, (aRegion.y / 2)+60));
 		display_keyzone_settings(std::get<hmx_fusion_nodes*>(map.children[currentKeyzone].value), moggFiles);
 		ImGui::EndChild();
 
@@ -1270,21 +1340,18 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 			else {
 				nodes[0]->getInt("unpitched") = 0;
 				nodes[1]->getInt("unpitched") = 0;
-			}
+			}	
 		}
 
-		bool sng = nodes[0]->getInt("singleton") == 1;
-		bool sng_changed = ImGui::Checkbox("Singleton", &sng);
-		if (sng_changed) {
-			if (sng) {
-				nodes[0]->getInt("singleton") = 1;
-				nodes[1]->getInt("singleton") = 1;
-			}
-			else {
+		if(isRiser){
 				nodes[0]->getInt("singleton") = 0;
 				nodes[1]->getInt("singleton") = 0;
-			}
 		}
+		else {
+				nodes[0]->getInt("singleton") = 1;
+				nodes[1]->getInt("singleton") = 1;
+		}
+
 		auto&& ts = nodes[0]->getNode("timestretch_settings");
 		auto&& ts2 = nodes[1]->getNode("timestretch_settings");
 
@@ -1301,10 +1368,12 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 			}
 		}
 	}
+
+
 }
 
 void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMode) {
-	ChooseFuserEnum<FuserEnums::Instrument>("Instrument", celData.instrument);
+	ChooseFuserEnum<FuserEnums::Instrument>("Instrument", celData.instrument, false);
 
 	auto&& fusionFile = celData.majorAssets[0].data.fusionFile.data;
 
@@ -1515,7 +1584,7 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 
 	auto windowSize = ImGui::GetWindowSize();
 
-	auto oggWindowSize = ImGui::GetContentRegionAvail().y - 23;
+	auto oggWindowSize = ImGui::GetContentRegionAvail().y - 50;
 	if (ImGui::BeginTabBar("CelDataEditTabs")) {
 		if (ImGui::BeginTabItem("Disc Audio")) {
 			ImGui::BeginChild("AudioSettingsDisc", ImVec2((windowSize.x / 3) * 2, oggWindowSize));
@@ -1882,9 +1951,21 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 		ImGui::EndTabBar();
 	}
 
+	bool allUnpitched = celData.allUnpitched == true;
+	bool allUnpitchedChanged = ImGui::Checkbox("Track has no key?",&allUnpitched);
+	if (allUnpitchedChanged) {
+		if (allUnpitched) {
+			celData.allUnpitched = true;
+			celData.songTransitionFile.data.allUnpitched = true;
+		}
+		else {
+			celData.allUnpitched = false;
+			celData.songTransitionFile.data.allUnpitched = false;
+		}
+	}
 
-
-
+	ImGui::SameLine();
+	HelpMarker("When this is checked, the disc and riser will both have key and mode set to Num, which is no key or mode. This allows for FUSER to change the key/mode when you drop down another disc if this one is playing. Mostly useful for drum tracks.");
 
 }
 void set_g_pd3dDevice(ID3D11Device* g_pd3dDevice) {

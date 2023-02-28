@@ -844,6 +844,10 @@ struct CelData {
 			if (auto celMode = ctx.getProp<EnumProperty>(ctx.curEntry, "Mode")) {
 				auto celModeStr = celMode->value.getString(ctx.getHeader());
 				mode = FuserEnums::ToValue<FuserEnums::KeyMode>(celModeStr);
+				if (mode == FuserEnums::KeyMode::Value::Num) {
+					allUnpitched = true;
+					songTransitionFile.data.allUnpitched = true;
+				}
 			}
 		}
 
@@ -1031,8 +1035,9 @@ struct AssetRoot {
 		
 		ctx.serializePrimitive<i32>("Year", year);
 		ctx.year = year;
-
 		if (ctx.loading) {
+			std::string actualKey = "EKey::C";
+			FuserEnums::KeyMode::Value actualMode = FuserEnums::KeyMode::Value::Major;
 			auto genrePtr = ctx.getProp<EnumProperty>(ctx.curEntry, "Genre");
 			auto genreStr = genrePtr->value.getString(ctx.getHeader());
 			genre = FuserEnums::ToValue<FuserEnums::Genre>(genreStr);
@@ -1055,9 +1060,16 @@ struct AssetRoot {
 					ctx.bpm = bpm = ctx.getProp<PrimitiveProperty<i32>>(fileLink.data.file.e, "BPM")->data;
 					ctx.songKey = songKey = ctx.getProp<EnumProperty>(fileLink.data.file.e, "Key")->value.getString(fileLink.data.file.e->getHeader());
 					ctx.curKeyMode = keyMode = fileLink.data.mode;
-
+					if (ctx.songKey != "EKey::Num") {
+						actualKey = ctx.songKey;
+					}
+					if (ctx.curKeyMode != FuserEnums::KeyMode::Value::Num) {
+						actualMode = ctx.curKeyMode;
+					}
 				celData.emplace_back(std::move(fileLink));
 			}
+			ctx.songKey = songKey = actualKey;
+			ctx.curKeyMode = keyMode = actualMode;
 		}
 		else {
 			ctx.smallArt = true;
