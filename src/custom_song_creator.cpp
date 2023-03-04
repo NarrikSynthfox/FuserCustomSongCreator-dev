@@ -452,7 +452,7 @@ void load_file(DataBuffer&& dataBuf) {
 			HmxAudio::PackageFile* fusionPackageFile = nullptr;
 			std::vector<HmxAudio::PackageFile*> moggFiles;
 			std::unordered_set<std::string> fusion_mogg_files;
-			if (celMoggFiles[idx].size() == 1) {
+			if (celMoggFiles[idx].size() == 1 && cel.data.type.value != CelType::Type::Beat) {
 				asset.audio.audioFiles.erase(asset.audio.audioFiles.begin() + 1);
 			}
 			for (auto&& file : asset.audio.audioFiles) {
