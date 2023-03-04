@@ -992,10 +992,16 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 
 				currentAudioFile = 0;
 				currentKeyzone = 0;
+				std::unordered_set<std::string> usedFileNames;
+				usedFileNames.emplace(std::get<hmx_fusion_nodes*>(map.children[0].value)->getString("sample_path"));
+				if (map.children.size() >= 2) {
+					usedFileNames.emplace(std::get<hmx_fusion_nodes*>(map.children[1].value)->getString("sample_path"));
+				}
+
 				int audioFileCount = 0;
 				for (auto it = asset.audio.audioFiles.begin(); it != asset.audio.audioFiles.end();) {
 					if (it->fileType == "MoggSampleResource") {
-						if (audioFileCount == 2) {
+						if (audioFileCount == 2 || usedFileNames.count(it->fileName)==0) {
 							it = asset.audio.audioFiles.erase(it);
 						}
 						else {
@@ -1061,7 +1067,7 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 				ts2.getInt("maintain_time") = 1;
 				ts.getInt("sync_tempo") = 1;
 				ts2.getInt("sync_tempo") = 1;
-
+				auto&& fusion = std::get<HmxAudio::PackageFile::FusionFileResource>(fusionPackageFile->resourceHeader);
 				fusion.nodes.getInt("edit_advanced") = 0;
 				advanced = false;
 			}
