@@ -1957,21 +1957,27 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 		ImGui::EndTabBar();
 	}
 
-	bool allUnpitched = celData.allUnpitched == true;
-	bool allUnpitchedChanged = ImGui::Checkbox("Track has no key?",&allUnpitched);
-	if (allUnpitchedChanged) {
-		if (allUnpitched) {
-			celData.allUnpitched = true;
-			celData.songTransitionFile.data.allUnpitched = true;
-		}
-		else {
-			celData.allUnpitched = false;
-			celData.songTransitionFile.data.allUnpitched = false;
+	if (celData.type.value == CelType::Type::Beat) {
+		bool allUnpitched = celData.allUnpitched == true;
+		bool allUnpitchedChanged = ImGui::Checkbox("Track has no key?", &allUnpitched);
+
+		if (allUnpitchedChanged) {
+			if (allUnpitched) {
+				celData.allUnpitched = true;
+				celData.songTransitionFile.data.allUnpitched = true;
+			}
+			else {
+				celData.allUnpitched = false;
+				celData.songTransitionFile.data.allUnpitched = false;
+			}
 		}
 	}
-
+	else {
+		celData.allUnpitched = false;
+		celData.songTransitionFile.data.allUnpitched = false;
+	}
 	ImGui::SameLine();
-	HelpMarker("When this is checked, the disc and riser will both have key and mode set to Num, which is no key or mode. This allows for FUSER to change the key/mode when you drop down another disc if this one is playing. Mostly useful for drum tracks.");
+	HelpMarker("When this is checked, the disc and riser will both have key and mode set to Num, which is no key or mode. This allows for FUSER to change the key/mode when you drop down another disc if this one is playing.");
 
 }
 void set_g_pd3dDevice(ID3D11Device* g_pd3dDevice) {
