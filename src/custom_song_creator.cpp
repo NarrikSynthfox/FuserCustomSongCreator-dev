@@ -972,8 +972,7 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 	if (advanced)
 		advBtn = "Switch to Simple Mode";
 
-	if (ImGui::Button(advBtn.c_str()))
-		ImGui::OpenPopup("Switch Modes?");
+	
 
 	if (ImGui::BeginPopupModal("Switch Modes?", NULL, ImGuiWindowFlags_AlwaysAutoResize))
 	{
@@ -1264,6 +1263,7 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 		ImGui::EndChild();
 	}
 	else {
+		ImGui::BeginChild("SimpleUI", ImVec2((aRegion.x / 3) * 2, (aRegion.y / 3) + (aRegion.y / 2) + 74));
 		bool duplicate_changed = false;
 		if (duplicate_moggs) {
 			ImGui::Text("Duplicated");
@@ -1373,9 +1373,11 @@ void display_cel_audio_options(CelData& celData, HmxAssetFile& asset, std::vecto
 				ts2.getInt("maintain_formant") = 0;
 			}
 		}
+		ImGui::EndChild();
 	}
-
-
+	
+	if (ImGui::Button(advBtn.c_str()))
+		ImGui::OpenPopup("Switch Modes?");
 }
 
 void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMode) {
@@ -1971,14 +1973,14 @@ void display_cell_data(CelData& celData, FuserEnums::KeyMode::Value currentKeyMo
 				celData.songTransitionFile.data.allUnpitched = false;
 			}
 		}
+		ImGui::SameLine();
+		HelpMarker("When this is checked, the disc and riser will both have key and mode set to Num, which is no key or mode. This allows for FUSER to change the key/mode when you drop down another disc if this one is playing.");
 	}
 	else {
 		celData.allUnpitched = false;
 		celData.songTransitionFile.data.allUnpitched = false;
 	}
-	ImGui::SameLine();
-	HelpMarker("When this is checked, the disc and riser will both have key and mode set to Num, which is no key or mode. This allows for FUSER to change the key/mode when you drop down another disc if this one is playing.");
-
+		
 }
 void set_g_pd3dDevice(ID3D11Device* g_pd3dDevice) {
 	gCtx.g_pd3dDevice = g_pd3dDevice;
@@ -1998,10 +2000,15 @@ void custom_song_creator_update(size_t width, size_t height) {
 			if (ImGui::MenuItem("Open", "Ctrl+O")) {
 				do_open = true;
 			}
-
-			if (ImGui::MenuItem("Save", "Ctrl+S")) {
-				do_save = true;
+			if (gCtx.currentPak != nullptr) {
+				if (ImGui::MenuItem("Save", "Ctrl+S")) {
+					do_save = true;
+				}
 			}
+			else {
+				ImGui::MenuItem("Save", "Ctrl+S",false,false);
+			}
+			
 
 			if (ImGui::MenuItem("Save As..")) {
 				select_save_location();
